@@ -1,7 +1,8 @@
+from toolbox import  import_function
 
 
 #
-# function, initialStates =
+# function, initialStates = import_function.importFunction('FILENAME')
 # Step 1
 # function =
 #
