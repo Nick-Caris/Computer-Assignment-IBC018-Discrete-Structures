@@ -18,7 +18,7 @@ print(expression)
 expression = x * expression
 print(expression)
 
-# This expands the formula
+# This expands the formula, forcing it to resolve x * (5**y + 2*sqrt(x) + 1)
 expanded_expression = sp.expand(expression)
 print(expanded_expression)
 
