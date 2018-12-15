@@ -22,7 +22,7 @@ DESCRIPTION
 
 import glob # Library for filename pattern-matching
 import sympy as sy
-from sympy import sympify, roots, solve, expand, factor
+from sympy import sympify, roots, solve, expand, factor, symbols
 from sympy.abc import r, n
 import sys # For access to the given argument
 import os  # Gives access to current location of co_rr_solver
@@ -166,8 +166,38 @@ def fix_syntax(lines):
 """Finds a closed formula for a homogeneous recurrence relation.
     The return value is a string of the right side of the equation "s(n) = ..."""
 def solve_homogeneous_equation(init_conditions, associated):
-    # You have to implement this yourself!
+    roots = None
+
+    characteristics = get_characteristic_equation(associated)
+    roots = solve_root(associated)
+
     return result
+
+def get_characteristic_equation(associated):
+    r = symbols('r')
+    degrees = max(associated, key=int)
+
+    characteristics = r**max(associated, key=int)
+
+    for key in associated:
+        value = associated.get(key).split('*')[0] #associated.get(key) will return something like '-2*1' where the split removes the unwanted '*1' and the [0] takes the '-2' which we need
+        characteristics += ((-1) * int(value) * r**(degrees - key)) #the '-1' is used to determine the characteristic equation
+
+    return characteristics
+
+def solve_root(associated):
+    degrees = max(associated, key=int)
+    if (degrees == 2): #if the recurrence relation has two degrees, use the abc formula
+        a = 1
+        b = (-1) * int(associated.get(1).split('*')[0])
+        c = (-1) * int(associated.get(2).split('*')[0])
+
+        root_1 = ((-b) + sy.sqrt(b**2 - 4*a*c)) / (2*a)
+        root_2 = ((-b) - sy.sqrt(b**2 - 4*a*c)) / (2*a)
+
+        return [root_1, root_2]
+    else:
+        print("This feature has yet to be implemented!")
 
 """Finds a closed formula for a nonhomogeneous equation, where the nonhomogeneous part consists
     of a linear combination of constants, "r*n^x" with r a real number and x a positive natural number,
