@@ -219,7 +219,7 @@ else:
         if sys.argv[argv_index].find("/") != -1:
             path = sys.argv[argv_index]
     print(path)
-    for filename in glob.glob(path + "comass[0-9][0-9].txt"):
+    for filename in glob.glob("../testData/comass[0-9][0-9].txt"):
         print("File: "+filename)
         next_symbolic_var_index = 0 # Reset this index for every file
         debug_print("Beginning for file \"{0}\"".format(filename))
