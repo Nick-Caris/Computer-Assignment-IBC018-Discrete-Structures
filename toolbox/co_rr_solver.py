@@ -22,7 +22,7 @@ DESCRIPTION
 
 import glob # Library for filename pattern-matching
 import sympy as sy
-from sympy import sympify, roots, solve, expand, factor, symbols
+from sympy import sympify, roots, solve, expand, factor, symbols, rsolve # REMOVE RSOLVE IN THE LATEST RELEASE
 from sympy.abc import r, n
 import sys # For access to the given argument
 import os  # Gives access to current location of co_rr_solver
@@ -166,38 +166,73 @@ def fix_syntax(lines):
 """Finds a closed formula for a homogeneous recurrence relation.
     The return value is a string of the right side of the equation "s(n) = ..."""
 def solve_homogeneous_equation(init_conditions, associated):
-    roots = None
 
     characteristics = get_characteristic_equation(associated)
-    roots = solve_root(associated)
+    print("Characteristics equation: " + str(characteristics))
+
+    roots = solve(characteristics)
+    print("Characteristic root(s): " + str(roots))
+
+    general_solution = find_general_solution(roots)
+    print("General solution: " + str(general_solution))
+
+    alphas = solve_alpha(general_solution, init_conditions)
 
     return result
+
+""" method to check if the output from the recurrence relation was correct 
+    REMOVE THIS METHOD, INCLUDING THE RSOLVE INCLUDE AT THE TOP BEFORE RELEASE"""
+def CHEAT_METHOD():
+    y = symbols('y')
+
+    f = y(n) - 3*y(n-1) + 3*y(n-2) - y(n-3)
+    CHEAT = rsolve(f, y(n), {y(0):2, y(1):4, y(2):8})
+
+    return CHEAT
 
 def get_characteristic_equation(associated):
     r = symbols('r')
     degrees = max(associated, key=int)
-
-    characteristics = r**max(associated, key=int)
+    
+    characteristics = r**max(associated, key=int) # maybe change this to r**k where k is the maximum level of characteristics
 
     for key in associated:
-        value = associated.get(key).split('*')[0] #associated.get(key) will return something like '-2*1' where the split removes the unwanted '*1' and the [0] takes the '-2' which we need
+        # associated.get(key) will return something like '-2*1', split() removes the unwanted '*1'
+        value = associated.get(key).split('*')[0]
         characteristics += ((-1) * int(value) * r**(degrees - key)) #the '-1' is used to determine the characteristic equation
 
     return characteristics
 
-def solve_root(associated):
-    degrees = max(associated, key=int)
-    if (degrees == 2): #if the recurrence relation has two degrees, use the abc formula
-        a = 1
-        b = (-1) * int(associated.get(1).split('*')[0])
-        c = (-1) * int(associated.get(2).split('*')[0])
+def find_general_solution(roots):
+    n, a1, a2 = symbols('n alpha1 alpha2')
+    fn = 0
 
-        root_1 = ((-b) + sy.sqrt(b**2 - 4*a*c)) / (2*a)
-        root_2 = ((-b) - sy.sqrt(b**2 - 4*a*c)) / (2*a)
+    # Rewrite this to dynamically load a1, a2 etc using: "for root in roots":
+    for i in range(len(roots)):
+        if i == 0: 
+            fn += a1 * (roots[i])**n
+        if i == 1:
+            fn += a2 * (roots[i])**n
 
-        return [root_1, root_2]
-    else:
-        print("This feature has yet to be implemented!")
+    return fn
+
+def solve_alpha(general_solution, init_conditions):
+    alpha_solutions = []
+    for i in range(len(init_conditions)):#for condition in init_conditions:
+        condition = int(init_conditions[i])
+        alpha_formula = general_solution.subs({n:i}) + ((-1)*int(init_conditions.get(condition)))
+
+        if (i == 0):
+            alpha_solutions += solve(alpha_formula, 'alpha1')
+        if (i == 1):
+            alpha_solutions += solve(alpha_formula, 'alpha2')
+
+    x = alpha_solutions[1].subs({'alpha1':alpha_solutions[0]})
+    alpha2 = solve(x)
+    alpha1 = alpha_solutions[0].subs({'alpha2':alpha2[0]})
+
+    return alpha_solutions
+
 
 """Finds a closed formula for a nonhomogeneous equation, where the nonhomogeneous part consists
     of a linear combination of constants, "r*n^x" with r a real number and x a positive natural number,
@@ -249,7 +284,7 @@ else:
         if sys.argv[argv_index].find("/") != -1:
             path = sys.argv[argv_index]
     print(path)
-    for filename in glob.glob("../testData/comass[0-9][0-9].txt"):
+    for filename in glob.glob("../testData/comass07.txt"):
         print("File: "+filename)
         next_symbolic_var_index = 0 # Reset this index for every file
         debug_print("Beginning for file \"{0}\"".format(filename))
