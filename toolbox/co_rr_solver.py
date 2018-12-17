@@ -22,7 +22,7 @@ DESCRIPTION
 
 import glob  # Library for filename pattern-matching
 import sympy as sy
-from sympy import sympify, roots, solve, expand, factor
+from sympy import sympify, roots, solve, expand, factor, symbols, rsolve # REMOVE RSOLVE IN THE LATEST RELEASE
 from sympy.abc import r, n
 import sys  # For access to the given argument
 import os  # Gives access to current location of co_rr_solver
@@ -257,8 +257,73 @@ def fix_syntax(lines):
 
 
 def solve_homogeneous_equation(init_conditions, associated):
-    # You have to implement this yourself!
+
+    characteristics = get_characteristic_equation(associated)
+    print("Characteristics equation: " + str(characteristics))
+
+    roots = solve(characteristics)
+    print("Characteristic root(s): " + str(roots))
+
+    general_solution = find_general_solution(roots)
+    print("General solution: " + str(general_solution))
+
+    alphas = solve_alpha(general_solution, init_conditions)
+
     return result
+
+
+""" method to check if the output from the recurrence relation was correct 
+    REMOVE THIS METHOD, INCLUDING THE RSOLVE INCLUDE AT THE TOP BEFORE RELEASE"""
+def CHEAT_METHOD():
+    y = symbols('y')
+
+    f = y(n) - 3*y(n-1) + 3*y(n-2) - y(n-3)
+    CHEAT = rsolve(f, y(n), {y(0):2, y(1):4, y(2):8})
+
+    return CHEAT
+
+def get_characteristic_equation(associated):
+    r = symbols('r')
+    degrees = max(associated, key=int)
+
+    characteristics = r**max(associated, key=int) # maybe change this to r**k where k is the maximum level of characteristics
+
+    for key in associated:
+        # associated.get(key) will return something like '-2*1', split() removes the unwanted '*1'
+        value = associated.get(key).split('*')[0]
+        characteristics += ((-1) * int(value) * r**(degrees - key)) #the '-1' is used to determine the characteristic equation
+
+    return characteristics
+
+def find_general_solution(roots):
+    n, a1, a2 = symbols('n alpha1 alpha2')
+    fn = 0
+
+    # Rewrite this to dynamically load a1, a2 etc using: "for root in roots":
+    for i in range(len(roots)):
+        if i == 0:
+            fn += a1 * (roots[i])**n
+        if i == 1:
+            fn += a2 * (roots[i])**n
+
+    return fn
+
+def solve_alpha(general_solution, init_conditions):
+    alpha_solutions = []
+    for i in range(len(init_conditions)):#for condition in init_conditions:
+        condition = int(init_conditions[i])
+        alpha_formula = general_solution.subs({n:i}) + ((-1)*int(init_conditions.get(condition)))
+
+        if (i == 0):
+            alpha_solutions += solve(alpha_formula, 'alpha1')
+        if (i == 1):
+            alpha_solutions += solve(alpha_formula, 'alpha2')
+
+    x = alpha_solutions[1].subs({'alpha1':alpha_solutions[0]})
+    alpha2 = solve(x)
+    alpha1 = alpha_solutions[0].subs({'alpha2':alpha2[0]})
+
+    return alpha_solutions
 
 
 """Finds a closed formula for a nonhomogeneous equation, where the nonhomogeneous part consists
@@ -320,9 +385,9 @@ else:
         if sys.argv[argv_index].find("/") != -1:
             path = sys.argv[argv_index]
     print(path)
-    for filename in glob.glob("../testData/comass03.txt"):
-        print("File: " + filename)
-        next_symbolic_var_index = 0  # Reset this index for every file
+    for filename in glob.glob("../testData/comass07.txt"):
+        print("File: "+filename)
+        next_symbolic_var_index = 0 # Reset this index for every file
         debug_print("Beginning for file \"{0}\"".format(filename))
         lines = read_file(filename)
         lines = clear_commas(lines)
@@ -345,7 +410,6 @@ else:
         debug_print(associated)
         debug_print("F(n):")
         debug_print(f_n_list)
-        break
 
         output_filename = filename.replace(".txt", "-dir.txt")
         resulting_equ = ""
