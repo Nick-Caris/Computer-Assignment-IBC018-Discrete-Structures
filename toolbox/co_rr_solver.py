@@ -177,6 +177,11 @@ def solve_homogeneous_equation(init_conditions, associated):
     print("General solution: " + str(general_solution))
 
     alphas = solve_alpha(general_solution, init_conditions)
+    print("Alphas: " + str(alphas))
+
+    result = general_solution.subs({'alpha1':alphas[0], 'alpha2':alphas[1]})
+    print("Result: " + str(result))
+    #resultCHEAT = CHEAT_METHOD()
 
     return result
 
@@ -185,8 +190,8 @@ def solve_homogeneous_equation(init_conditions, associated):
 def CHEAT_METHOD():
     y = symbols('y')
 
-    f = y(n) - 3*y(n-1) + 3*y(n-2) - y(n-3)
-    CHEAT = rsolve(f, y(n), {y(0):2, y(1):4, y(2):8})
+    f = y(n) - y(n-1) - y(n-2)
+    CHEAT = rsolve(f, y(n), {y(0):1, y(1):1})
 
     return CHEAT
 
@@ -207,32 +212,46 @@ def find_general_solution(roots):
     n, a1, a2 = symbols('n alpha1 alpha2')
     fn = 0
 
-    # Rewrite this to dynamically load a1, a2 etc using: "for root in roots":
     for i in range(len(roots)):
-        if i == 0: 
-            fn += a1 * (roots[i])**n
-        if i == 1:
-            fn += a2 * (roots[i])**n
+        if len(roots) == 1:
+            fn += a1 * (roots[i])**n + a2 * n * (roots[i])**n
+        else:
+            fn += symbols('alpha' + str(i+1)) * (roots[i])**n
 
     return fn
 
 def solve_alpha(general_solution, init_conditions):
+    alpha1 = None
+    alpha2 = None
+    alpha3 = None
+    alpha4 = None
     alpha_solutions = []
     for i in range(len(init_conditions)):#for condition in init_conditions:
-        condition = int(init_conditions[i])
-        alpha_formula = general_solution.subs({n:i}) + ((-1)*int(init_conditions.get(condition)))
+        alpha_formula = general_solution.subs({n:i}) + ((-1)*int(init_conditions[i]))
 
+        alpha_solutions += solve(alpha_formula, "alpha" + str(i+1))
+        
         if (i == 0):
-            alpha_solutions += solve(alpha_formula, 'alpha1')
+            alpha1 = solve(alpha_formula, 'alpha1')
+            
         if (i == 1):
-            alpha_solutions += solve(alpha_formula, 'alpha2')
+            alpha2 = solve(alpha_formula.subs({'alpha1':alpha1[0]}), 'alpha2')
+            alpha1 = alpha1[0].subs({'alpha2':alpha2[0]})
 
-    x = alpha_solutions[1].subs({'alpha1':alpha_solutions[0]})
-    alpha2 = solve(x)
-    alpha1 = alpha_solutions[0].subs({'alpha2':alpha2[0]})
+        if (i == 2):
+            alpha3 = solve(alpha_formula.subs({'alpha1':alpha1[0], 'alpha2':alpha2[0]}), 'alpha3')
+            alpha2 = alpha3[0].subs({'alpha3':alpha3[0]})
+            alpha1 = alpha3[0].subs({'alpha2':alpha2, 'alpha3':alpha3[0]})
 
-    return alpha_solutions
+    return [alpha1, alpha2[0]]
 
+def test(i, alpha_solutions):
+    if (i == 0):
+        return {}
+    if (i == 1):
+        return {"alpha" + str(i):alpha_solutions[i-1]}
+    if (i == 2):
+        return {"alpha" + str(i-1):alpha_solutions[i-2], "alpha" + str(i):alpha_solutions[i-1]}
 
 """Finds a closed formula for a nonhomogeneous equation, where the nonhomogeneous part consists
     of a linear combination of constants, "r*n^x" with r a real number and x a positive natural number,
@@ -284,7 +303,7 @@ else:
         if sys.argv[argv_index].find("/") != -1:
             path = sys.argv[argv_index]
     print(path)
-    for filename in glob.glob("../testData/comass07.txt"):
+    for filename in glob.glob("../testData/comass04.txt"):
         print("File: "+filename)
         next_symbolic_var_index = 0 # Reset this index for every file
         debug_print("Beginning for file \"{0}\"".format(filename))
