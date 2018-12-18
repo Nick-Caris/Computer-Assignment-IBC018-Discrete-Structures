@@ -22,10 +22,12 @@ DESCRIPTION
 
 import glob  # Library for filename pattern-matching
 import sympy as sy
-from sympy import sympify, roots, solve, expand, factor, symbols, rsolve # REMOVE RSOLVE IN THE LATEST RELEASE
+from sympy import sympify, roots, solve, expand, factor, symbols, rsolve  # REMOVE RSOLVE IN THE LATEST RELEASE
 from sympy.abc import r, n
 import sys  # For access to the given argument
 import os  # Gives access to current location of co_rr_solver
+
+# import interrools
 
 # Global variables:
 next_symbolic_var_index = 0  # This variable indicates the next index for the p_x variable names needed for Theorem 6.
@@ -153,8 +155,21 @@ def getKey(item):
 def flatten_tuple(tuple_list):
     string = ""
     for item in tuple_list:
-        string += item[1]
+        if item != '':
+            string += item[1]
     return string
+
+
+def combine_value(string_one, string_two):
+    right_one = string_one.find('s') - 1
+    value_one = string_one[1: right_one]
+    right_two = string_two.find('s') - 1
+    value_two = string_two[1: right_two]
+
+    new_value = int(value_one) + int(value_two)
+    combined = string_one[0: right_one - 1] + str(new_value) + string_one[right_one: len(string_one)]
+
+    return combined
 
 
 def rewrite_equation(equation):
@@ -164,6 +179,16 @@ def rewrite_equation(equation):
         value = s[exclusive_end_pos - 1:exclusive_end_pos]
         tuple_function = tuple_function + [[value, s]]
     tuple_function = sorted(tuple_function, key=getKey)
+
+    print('hola cowboy: ', tuple_function[0][0])
+    for i in range(len(tuple_function)):
+        for j in range(i + 1, len(tuple_function) - 1):
+            if tuple_function[i][0] == tuple_function[j][0]:
+                print('gelijk: ', tuple_function[i])
+                tuple_function[i][1] = combine_value(tuple_function[i][1], tuple_function[j][1])
+                tuple_function[j] = ''
+
+    print('123', tuple_function)
 
     return flatten_tuple(tuple_function)
 
@@ -175,14 +200,10 @@ def function_name_not_found(equation):
     while pos_s >= 0:  # There is another recurrent s(n-x) part
         equation, function_bit = test(equation)
         split_up_function.append(function_bit)
-        print('test', function_bit)
-        print('HIER GODVERDOMME', equation)
         pos_s = equation.find("s(n-")  # Next position of recurrent part
 
-    print('end:', split_up_function)
     rewritten_equation = rewrite_equation(split_up_function)
     return rewritten_equation
-
 
 
 """Determines and returns:
@@ -211,6 +232,7 @@ def analyze_recurrence_equation(equation):
         pos_s = equation.find("s(n-")  # First position of recurrent part (because other "s(n-"-part is already removed)
     # Sorry, but you will have to implement the treatment of F(n) yourself!
 
+    print('ass: ', associated)
     return associated, f_n_list
 
 
@@ -257,7 +279,6 @@ def fix_syntax(lines):
 
 
 def solve_homogeneous_equation(init_conditions, associated):
-
     characteristics = get_characteristic_equation(associated)
     print("Characteristics equation: " + str(characteristics))
 
@@ -274,26 +295,32 @@ def solve_homogeneous_equation(init_conditions, associated):
 
 """ method to check if the output from the recurrence relation was correct 
     REMOVE THIS METHOD, INCLUDING THE RSOLVE INCLUDE AT THE TOP BEFORE RELEASE"""
+
+
 def CHEAT_METHOD():
     y = symbols('y')
 
-    f = y(n) - 3*y(n-1) + 3*y(n-2) - y(n-3)
-    CHEAT = rsolve(f, y(n), {y(0):2, y(1):4, y(2):8})
+    f = y(n) - 3 * y(n - 1) + 3 * y(n - 2) - y(n - 3)
+    CHEAT = rsolve(f, y(n), {y(0): 2, y(1): 4, y(2): 8})
 
     return CHEAT
+
 
 def get_characteristic_equation(associated):
     r = symbols('r')
     degrees = max(associated, key=int)
 
-    characteristics = r**max(associated, key=int) # maybe change this to r**k where k is the maximum level of characteristics
+    characteristics = r ** max(associated,
+                               key=int)  # maybe change this to r**k where k is the maximum level of characteristics
 
     for key in associated:
         # associated.get(key) will return something like '-2*1', split() removes the unwanted '*1'
         value = associated.get(key).split('*')[0]
-        characteristics += ((-1) * int(value) * r**(degrees - key)) #the '-1' is used to determine the characteristic equation
+        characteristics += ((-1) * int(value) * r ** (
+                    degrees - key))  # the '-1' is used to determine the characteristic equation
 
     return characteristics
+
 
 def find_general_solution(roots):
     n, a1, a2 = symbols('n alpha1 alpha2')
@@ -302,26 +329,27 @@ def find_general_solution(roots):
     # Rewrite this to dynamically load a1, a2 etc using: "for root in roots":
     for i in range(len(roots)):
         if i == 0:
-            fn += a1 * (roots[i])**n
+            fn += a1 * (roots[i]) ** n
         if i == 1:
-            fn += a2 * (roots[i])**n
+            fn += a2 * (roots[i]) ** n
 
     return fn
 
+
 def solve_alpha(general_solution, init_conditions):
     alpha_solutions = []
-    for i in range(len(init_conditions)):#for condition in init_conditions:
+    for i in range(len(init_conditions)):  # for condition in init_conditions:
         condition = int(init_conditions[i])
-        alpha_formula = general_solution.subs({n:i}) + ((-1)*int(init_conditions.get(condition)))
+        alpha_formula = general_solution.subs({n: i}) + ((-1) * int(init_conditions.get(condition)))
 
         if (i == 0):
             alpha_solutions += solve(alpha_formula, 'alpha1')
         if (i == 1):
             alpha_solutions += solve(alpha_formula, 'alpha2')
 
-    x = alpha_solutions[1].subs({'alpha1':alpha_solutions[0]})
+    x = alpha_solutions[1].subs({'alpha1': alpha_solutions[0]})
     alpha2 = solve(x)
-    alpha1 = alpha_solutions[0].subs({'alpha2':alpha2[0]})
+    alpha1 = alpha_solutions[0].subs({'alpha2': alpha2[0]})
 
     return alpha_solutions
 
@@ -385,9 +413,9 @@ else:
         if sys.argv[argv_index].find("/") != -1:
             path = sys.argv[argv_index]
     print(path)
-    for filename in glob.glob("../testData/comass07.txt"):
-        print("File: "+filename)
-        next_symbolic_var_index = 0 # Reset this index for every file
+    for filename in glob.glob("../testData/comass03.txt"):
+        print("File: " + filename)
+        next_symbolic_var_index = 0  # Reset this index for every file
         debug_print("Beginning for file \"{0}\"".format(filename))
         lines = read_file(filename)
         lines = clear_commas(lines)
@@ -410,13 +438,14 @@ else:
         debug_print(associated)
         debug_print("F(n):")
         debug_print(f_n_list)
-
         output_filename = filename.replace(".txt", "-dir.txt")
         resulting_equ = ""
         # Check if the equation is a homogeneous relation
         if not f_n_list:  # The list is empty
             resulting_equ = solve_homogeneous_equation(init_conditions, associated)
+            break
         else:
+            break
             resulting_equ = solve_nonhomogeneous_equation(init_conditions, associated, f_n_list)
         resulting_equ = reformat_equation(resulting_equ)
         write_output_to_file(output_filename, resulting_equ)
