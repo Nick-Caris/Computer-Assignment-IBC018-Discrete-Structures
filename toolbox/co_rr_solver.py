@@ -415,6 +415,7 @@ def write_output_to_file(filename, equation):
 
 
 def reformat_equation(equation):
+    equation = str(equation)
     equation = equation.replace("**", "^")
     pos_sqrt = equation.find("sqrt(")
     while pos_sqrt >= 0:
@@ -478,9 +479,7 @@ else:
         # Check if the equation is a homogeneous relation
         if not f_n_list:  # The list is empty
             resulting_equ = solve_homogeneous_equation(init_conditions, new_associated)
-            break
         else:
-            break
             resulting_equ = solve_nonhomogeneous_equation(init_conditions, associated, f_n_list)
         resulting_equ = reformat_equation(resulting_equ)
         write_output_to_file(output_filename, resulting_equ)
