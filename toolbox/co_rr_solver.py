@@ -188,8 +188,6 @@ def rewrite_equation(equation):
                 tuple_function[i][1] = combine_value(tuple_function[i][1], tuple_function[j][1])
                 tuple_function[j] = ''
 
-    print('123', tuple_function)
-
     return flatten_tuple(tuple_function)
 
 
@@ -232,8 +230,8 @@ def analyze_recurrence_equation(equation):
         pos_s = equation.find("s(n-")  # First position of recurrent part (because other "s(n-"-part is already removed)
     # Sorry, but you will have to implement the treatment of F(n) yourself!
 
-    print('ass: ', associated)
-    return associated, f_n_list
+    new_associated = f_n_list
+    return associated, f_n_list, new_associated
 
 
 """Reads in all lines of the file except the first, second and last one.
