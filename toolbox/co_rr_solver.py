@@ -172,8 +172,15 @@ def combine_value(string_one, string_two):
     return combined
 
 
+def delete_sn(tuple):
+    for i in range(len(tuple)):
+        tuple[i][1] = tuple[i][1][0:len(tuple[i][1]) - 6] + '1'
+    return tuple
+
+
 def rewrite_equation(equation):
     tuple_function = []
+    output_tuple_function = []
     for s in equation:
         exclusive_end_pos = s.find(")", 0)
         value = s[exclusive_end_pos - 1:exclusive_end_pos]
@@ -188,7 +195,13 @@ def rewrite_equation(equation):
                 tuple_function[i][1] = combine_value(tuple_function[i][1], tuple_function[j][1])
                 tuple_function[j] = ''
 
-    return flatten_tuple(tuple_function)
+    for i in range(len(tuple_function)):
+        if tuple_function[i] != '':
+            output_tuple_function = output_tuple_function + [[tuple_function[i][0], tuple_function[i][1]]]
+
+    output_tuple_function = delete_sn(output_tuple_function)
+    print(output_tuple_function)
+    return flatten_tuple(output_tuple_function), output_tuple_function
 
 
 def function_name_not_found(equation):
@@ -213,7 +226,7 @@ def function_name_not_found(equation):
 
 def analyze_recurrence_equation(equation):
     associated = {}
-    f_n_list = function_name_not_found(equation)
+    f_n_list, new_associated = function_name_not_found(equation)
     equation = equation[5:len(equation)]  # Remove the "s(n)="-part
     pos_s = equation.find("s(n-")  # First position of recurrent part
     while pos_s >= 0:  # There is another recurrent s(n-x) part
@@ -230,8 +243,7 @@ def analyze_recurrence_equation(equation):
         pos_s = equation.find("s(n-")  # First position of recurrent part (because other "s(n-"-part is already removed)
     # Sorry, but you will have to implement the treatment of F(n) yourself!
 
-    new_associated = f_n_list
-    return associated, f_n_list, new_associated
+    return associated, f_n_list, dict((int(x), y) for x, y in new_associated)
 
 
 """Reads in all lines of the file except the first, second and last one.
@@ -277,6 +289,7 @@ def fix_syntax(lines):
 
 
 def solve_homogeneous_equation(init_conditions, associated):
+    print('ASS: ', associated)
     characteristics = get_characteristic_equation(associated)
     print("Characteristics equation: " + str(characteristics))
 
@@ -289,9 +302,9 @@ def solve_homogeneous_equation(init_conditions, associated):
     alphas = solve_alpha(general_solution, init_conditions)
     print("Alphas: " + str(alphas))
 
-    result = general_solution.subs({'alpha1':alphas[0], 'alpha2':alphas[1]})
+    result = general_solution.subs({'alpha1': alphas[0], 'alpha2': alphas[1]})
     print("Result: " + str(result))
-    #resultCHEAT = CHEAT_METHOD()
+    # resultCHEAT = CHEAT_METHOD()
 
     return result
 
@@ -303,8 +316,8 @@ def solve_homogeneous_equation(init_conditions, associated):
 def CHEAT_METHOD():
     y = symbols('y')
 
-    f = y(n) - y(n-1) - y(n-2)
-    CHEAT = rsolve(f, y(n), {y(0):1, y(1):1})
+    f = y(n) - y(n - 1) - y(n - 2)
+    CHEAT = rsolve(f, y(n), {y(0): 1, y(1): 1})
 
     return CHEAT
 
@@ -320,7 +333,7 @@ def get_characteristic_equation(associated):
         # associated.get(key) will return something like '-2*1', split() removes the unwanted '*1'
         value = associated.get(key).split('*')[0]
         characteristics += ((-1) * int(value) * r ** (
-                    degrees - key))  # the '-1' is used to determine the characteristic equation
+                degrees - key))  # the '-1' is used to determine the characteristic equation
 
     return characteristics
 
@@ -331,9 +344,9 @@ def find_general_solution(roots):
 
     for i in range(len(roots)):
         if len(roots) == 1:
-            fn += a1 * (roots[i])**n + a2 * n * (roots[i])**n
+            fn += a1 * (roots[i]) ** n + a2 * n * (roots[i]) ** n
         else:
-            fn += symbols('alpha' + str(i+1)) * (roots[i])**n
+            fn += symbols('alpha' + str(i + 1)) * (roots[i]) ** n
 
     return fn
 
@@ -344,32 +357,34 @@ def solve_alpha(general_solution, init_conditions):
     alpha3 = None
     alpha4 = None
     alpha_solutions = []
-    for i in range(len(init_conditions)):#for condition in init_conditions:
-        alpha_formula = general_solution.subs({n:i}) + ((-1)*int(init_conditions[i]))
+    for i in range(len(init_conditions)):  # for condition in init_conditions:
+        alpha_formula = general_solution.subs({n: i}) + ((-1) * int(init_conditions[i]))
 
-        alpha_solutions += solve(alpha_formula, "alpha" + str(i+1))
+        alpha_solutions += solve(alpha_formula, "alpha" + str(i + 1))
 
         if (i == 0):
             alpha1 = solve(alpha_formula, 'alpha1')
 
         if (i == 1):
-            alpha2 = solve(alpha_formula.subs({'alpha1':alpha1[0]}), 'alpha2')
-            alpha1 = alpha1[0].subs({'alpha2':alpha2[0]})
+            alpha2 = solve(alpha_formula.subs({'alpha1': alpha1[0]}), 'alpha2')
+            alpha1 = alpha1[0].subs({'alpha2': alpha2[0]})
 
         if (i == 2):
-            alpha3 = solve(alpha_formula.subs({'alpha1':alpha1[0], 'alpha2':alpha2[0]}), 'alpha3')
-            alpha2 = alpha3[0].subs({'alpha3':alpha3[0]})
-            alpha1 = alpha3[0].subs({'alpha2':alpha2, 'alpha3':alpha3[0]})
+            alpha3 = solve(alpha_formula.subs({'alpha1': alpha1[0], 'alpha2': alpha2[0]}), 'alpha3')
+            alpha2 = alpha3[0].subs({'alpha3': alpha3[0]})
+            alpha1 = alpha3[0].subs({'alpha2': alpha2, 'alpha3': alpha3[0]})
 
     return [alpha1, alpha2[0]]
+
 
 def test(i, alpha_solutions):
     if (i == 0):
         return {}
     if (i == 1):
-        return {"alpha" + str(i):alpha_solutions[i-1]}
+        return {"alpha" + str(i): alpha_solutions[i - 1]}
     if (i == 2):
-        return {"alpha" + str(i-1):alpha_solutions[i-2], "alpha" + str(i):alpha_solutions[i-1]}
+        return {"alpha" + str(i - 1): alpha_solutions[i - 2], "alpha" + str(i): alpha_solutions[i - 1]}
+
 
 """Finds a closed formula for a nonhomogeneous equation, where the nonhomogeneous part consists
     of a linear combination of constants, "r*n^x" with r a real number and x a positive natural number,
@@ -455,12 +470,14 @@ else:
         debug_print(associated)
         debug_print("F(n):")
         debug_print(f_n_list)
+        debug_print("New Associated:")
+        debug_print(new_associated)
         f_n_list = None
         output_filename = filename.replace(".txt", "-dir.txt")
         resulting_equ = ""
         # Check if the equation is a homogeneous relation
         if not f_n_list:  # The list is empty
-            resulting_equ = solve_homogeneous_equation(init_conditions, associated)
+            resulting_equ = solve_homogeneous_equation(init_conditions, new_associated)
             break
         else:
             break
