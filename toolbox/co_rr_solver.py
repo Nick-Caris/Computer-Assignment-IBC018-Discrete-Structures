@@ -221,7 +221,8 @@ def function_name_not_found(equation):
 
 def analyze_recurrence_equation(equation):
     associated = {}
-    f_n_list, new_associated = function_name_not_found(equation)
+    f_as_whole, new_associated = function_name_not_found(equation)
+    f_n_list = {}
     equation = equation[5:len(equation)]  # Remove the "s(n)="-part
     pos_s = equation.find("s(n-")  # First position of recurrent part
     while pos_s >= 0:  # There is another recurrent s(n-x) part
@@ -238,7 +239,7 @@ def analyze_recurrence_equation(equation):
         pos_s = equation.find("s(n-")  # First position of recurrent part (because other "s(n-"-part is already removed)
     # Sorry, but you will have to implement the treatment of F(n) yourself!
 
-    return associated, f_n_list, (dict((int(x), y) for x, y in new_associated))
+    return associated, f_n_list, f_as_whole, (dict((int(x), y) for x, y in new_associated))
 
 
 """Reads in all lines of the file except the first, second and last one.
@@ -456,7 +457,7 @@ else:
             tmp -= 1
         init_conditions = det_init_conditions([lines[index] for index in range(1,
                                                                                tmp)])  # Determine initial conditions with all but the first line as input
-        associated, f_n_list, new_associated = analyze_recurrence_equation(lines[0])
+        associated, f_n_list, f_as_whole, new_associated = analyze_recurrence_equation(lines[0])
 
         # Print debugging information:
         debug_print(filename)
@@ -466,6 +467,8 @@ else:
         debug_print(associated)
         debug_print("F(n):")
         debug_print(f_n_list)
+        debug_print("Function:")
+        debug_print(f_as_whole)
         debug_print("New Associated:")
         debug_print(new_associated)
         f_n_list = None
