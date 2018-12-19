@@ -187,11 +187,9 @@ def rewrite_equation(equation):
         tuple_function = tuple_function + [[value, s]]
     tuple_function = sorted(tuple_function, key=getKey)
 
-    print('hola cowboy: ', tuple_function[0][0])
     for i in range(len(tuple_function)):
         for j in range(i + 1, len(tuple_function) - 1):
             if tuple_function[i][0] == tuple_function[j][0]:
-                print('gelijk: ', tuple_function[i])
                 tuple_function[i][1] = combine_value(tuple_function[i][1], tuple_function[j][1])
                 tuple_function[j] = ''
 
@@ -199,9 +197,7 @@ def rewrite_equation(equation):
         if tuple_function[i] != '':
             output_tuple_function = output_tuple_function + [[tuple_function[i][0], tuple_function[i][1]]]
 
-    output_tuple_function = delete_sn(output_tuple_function)
-    print(output_tuple_function)
-    return flatten_tuple(output_tuple_function), output_tuple_function
+    return flatten_tuple(output_tuple_function), delete_sn(output_tuple_function)
 
 
 def function_name_not_found(equation):
@@ -213,8 +209,7 @@ def function_name_not_found(equation):
         split_up_function.append(function_bit)
         pos_s = equation.find("s(n-")  # Next position of recurrent part
 
-    rewritten_equation = rewrite_equation(split_up_function)
-    return rewritten_equation
+    return rewrite_equation(split_up_function)
 
 
 """Determines and returns:
@@ -243,7 +238,7 @@ def analyze_recurrence_equation(equation):
         pos_s = equation.find("s(n-")  # First position of recurrent part (because other "s(n-"-part is already removed)
     # Sorry, but you will have to implement the treatment of F(n) yourself!
 
-    return associated, f_n_list, dict((int(x), y) for x, y in new_associated)
+    return associated, f_n_list, (dict((int(x), y) for x, y in new_associated))
 
 
 """Reads in all lines of the file except the first, second and last one.
