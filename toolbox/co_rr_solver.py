@@ -22,8 +22,12 @@ DESCRIPTION
 
 import glob  # Library for filename pattern-matching
 import sympy as sy
-from sympy import sympify, roots, solve, expand, factor, symbols, rsolve  # REMOVE RSOLVE IN THE LATEST RELEASE
+from sympy import *
+from sympy.parsing.sympy_parser import parse_expr
 from sympy.abc import r, n
+from sympy.interactive.printing import init_printing
+init_printing(use_unicode=False, wrap_line=False)
+from sympy.matrices import Matrix, eye, zeros, ones, diag, GramSchmidt
 import sys  # For access to the given argument
 import os  # Gives access to current location of co_rr_solver
 
@@ -285,102 +289,87 @@ def fix_syntax(lines):
 
 
 def solve_homogeneous_equation(init_conditions, associated):
-    print('ASS: ', associated)
     characteristics = get_characteristic_equation(associated)
-    print("Characteristics equation: " + str(characteristics))
-
-    roots = solve(characteristics)
-    print("Characteristic root(s): " + str(roots))
-
-    general_solution = find_general_solution(roots)
-    print("General solution: " + str(general_solution))
-
-    alphas = solve_alpha(general_solution, init_conditions)
-    print("Alphas: " + str(alphas))
-
-    result = general_solution.subs({'alpha1': alphas[0], 'alpha2': alphas[1]})
-    print("Result: " + str(result))
-    # resultCHEAT = CHEAT_METHOD()
+    characteristic_roots = roots(characteristics)
+    general_solution, alpha_number = find_general_solution(characteristic_roots)
+    alpha_solutions = solve_alpha(general_solution, init_conditions, alpha_number)
+    result = compute_result(alpha_solutions, general_solution)
 
     return result
+    
 
+def compute_result(alpha_solutions, general_solution):
+    result = ""
 
-""" method to check if the output from the recurrence relation was correct 
-    REMOVE THIS METHOD, INCLUDING THE RSOLVE INCLUDE AT THE TOP BEFORE RELEASE"""
+    for i in range(len(alpha_solutions)):
+        result += str(general_solution[i].subs({'alpha' + str(i+1): alpha_solutions[i]}))
+        if i is not len(alpha_solutions)-1:
+            result += "+"
+    print("result: s(n) = " + result)
 
-
-def CHEAT_METHOD():
-    y = symbols('y')
-
-    f = y(n) - y(n - 1) - y(n - 2)
-    CHEAT = rsolve(f, y(n), {y(0): 1, y(1): 1})
-
-    return CHEAT
+    try:
+        simplified_result = simplify(result)
+        print("Simplified result: s(n) = " + str(simplified_result))
+        return simplified_result
+    except:
+        print("An error occured while simplifying the result!")
+    
+    return result
 
 
 def get_characteristic_equation(associated):
     r = symbols('r')
     degrees = max(associated, key=int)
 
-    characteristics = r ** max(associated,
-                               key=int)  # maybe change this to r**k where k is the maximum level of characteristics
+    characteristics = r ** max(associated, key=int)  # maybe change this to r**k where k is the maximum level of characteristics
 
     for key in associated:
         # associated.get(key) will return something like '-2*1', split() removes the unwanted '*1'
         value = associated.get(key).split('*')[0]
-        characteristics += ((-1) * int(value) * r ** (
-                degrees - key))  # the '-1' is used to determine the characteristic equation
+        characteristics += ((-1) * int(value) * r ** (degrees - key))  # the '-1' is used to determine the characteristic equation
 
+    print("Characteristics equation: " + str(characteristics))
     return characteristics
 
 
 def find_general_solution(roots):
-    n, a1, a2 = symbols('n alpha1 alpha2')
-    fn = 0
+    n = symbols('n')
+    fn = []
+    alpha_number = 0
 
-    for i in range(len(roots)):
-        if len(roots) == 1:
-            fn += a1 * (roots[i]) ** n + a2 * n * (roots[i]) ** n
-        else:
-            fn += symbols('alpha' + str(i + 1)) * (roots[i]) ** n
+    for root, multiplicity in roots.items():
+        print("Characteristic root: " + str(root) + ", multiplicity: " + str(multiplicity))
+        for i in range(multiplicity):
+            alpha_number += 1
+            fn.append(symbols('alpha' + str(alpha_number)) * n**i * (root) ** n)
 
-    return fn
-
-
-def solve_alpha(general_solution, init_conditions):
-    alpha1 = None
-    alpha2 = None
-    alpha3 = None
-    alpha4 = None
-    alpha_solutions = []
-    for i in range(len(init_conditions)):  # for condition in init_conditions:
-        alpha_formula = general_solution.subs({n: i}) + ((-1) * int(init_conditions[i]))
-
-        alpha_solutions += solve(alpha_formula, "alpha" + str(i + 1))
-
-        if (i == 0):
-            alpha1 = solve(alpha_formula, 'alpha1')
-
-        if (i == 1):
-            alpha2 = solve(alpha_formula.subs({'alpha1': alpha1[0]}), 'alpha2')
-            alpha1 = alpha1[0].subs({'alpha2': alpha2[0]})
-
-        if (i == 2):
-            alpha3 = solve(alpha_formula.subs({'alpha1': alpha1[0], 'alpha2': alpha2[0]}), 'alpha3')
-            alpha2 = alpha3[0].subs({'alpha3': alpha3[0]})
-            alpha1 = alpha3[0].subs({'alpha2': alpha2, 'alpha3': alpha3[0]})
-
-    return [alpha1, alpha2[0]]
+    print("General solution: " + str(fn))
+    return [fn, alpha_number]
 
 
-def test(i, alpha_solutions):
-    if (i == 0):
-        return {}
-    if (i == 1):
-        return {"alpha" + str(i): alpha_solutions[i - 1]}
-    if (i == 2):
-        return {"alpha" + str(i - 1): alpha_solutions[i - 2], "alpha" + str(i): alpha_solutions[i - 1]}
+def solve_alpha(general_solution, init_conditions, roots_amount):
+    matrix_length = len(init_conditions) # vertical alignment
+    matrix_width = roots_amount # horizontal alignment
+    matrix_general_solution = []
+    matrix_init_conditions = []
+    matrix_solutions = []
+    
+    for i in range(matrix_length):  # for condition in init_conditions:
+        for j in range(len(general_solution)):
+            matrix_general_solution.append(general_solution[j].subs({n: i, "alpha"+ str(j+1): 1}))
+        matrix_init_conditions.append(parse_expr(init_conditions[i]))
+        
+    M_general_solution = Matrix(matrix_length, matrix_width, matrix_general_solution)
+    M_init_conditions = Matrix(matrix_length, 1, matrix_init_conditions)
+    sol, params = M_general_solution.gauss_jordan_solve(M_init_conditions)
+    
+    for list in sol.tolist():
+        for sublist in list:
+            matrix_solutions.append(sublist)
 
+    print("Alphas: " + str(matrix_solutions))
+    return matrix_solutions
+        
 
 """Finds a closed formula for a nonhomogeneous equation, where the nonhomogeneous part consists
     of a linear combination of constants, "r*n^x" with r a real number and x a positive natural number,
@@ -442,7 +431,7 @@ else:
         if sys.argv[argv_index].find("/") != -1:
             path = sys.argv[argv_index]
     print(path)
-    for filename in glob.glob("../testData/comass03.txt"):
+    for filename in glob.glob("../testData/comass06.txt"):
         print("File: " + filename)
         next_symbolic_var_index = 0  # Reset this index for every file
         debug_print("Beginning for file \"{0}\"".format(filename))
@@ -476,7 +465,7 @@ else:
         resulting_equ = ""
         # Check if the equation is a homogeneous relation
         if not f_n_list:  # The list is empty
-            resulting_equ = solve_homogeneous_equation(init_conditions, new_associated)
+            resulting_equ = solve_homogeneous_equation(init_conditions, associated)
         else:
             resulting_equ = solve_nonhomogeneous_equation(init_conditions, associated, f_n_list)
         resulting_equ = reformat_equation(resulting_equ)
