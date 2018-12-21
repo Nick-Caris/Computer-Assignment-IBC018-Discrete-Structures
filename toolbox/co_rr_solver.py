@@ -214,7 +214,8 @@ def flatten_tuple_for_whole_function(tuple_list):
 def delete_sn_from_array(array):
     return_tuple = []
     for i in range(len(array)):
-        return_tuple = return_tuple + [[i, array[i][0:len(array[i]) - 6] + '1']]
+        value = array[i][array[i].find('n') + 2 : array[i].find(')')]
+        return_tuple = return_tuple + [[value, array[i][0:array[i].find('s')] + '1']]
     return return_tuple
 
 
@@ -224,8 +225,9 @@ def add_the_n(all_s_n, equation):
 
     for i in range(len(tuple_function)):
         for j in range(i + 1, len(tuple_function) - 1):
-            if tuple_function[i][0] == tuple_function[j][0]:
-                tuple_function[i][1] = combine_value(tuple_function[i][1], tuple_function[j][1])
+            if tuple_function[i][1] == tuple_function[j][1]:
+                print('These values are he same. one:', tuple_function[i][1], 'two:', tuple_function[j][1])
+                tuple_function[i][0] = combine_value(tuple_function[i][0], tuple_function[j][0])
                 tuple_function[j] = ''
 
     for i in range(len(tuple_function)):
@@ -526,7 +528,7 @@ else:
         if sys.argv[argv_index].find("/") != -1:
             path = sys.argv[argv_index]
     print(path)
-    for filename in glob.glob("../testData/comass06.txt"):
+    for filename in glob.glob("../testData/comass02.txt"):
         print("File: " + filename)
         next_symbolic_var_index = 0  # Reset this index for every file
         debug_print("Beginning for file \"{0}\"".format(filename))
@@ -559,7 +561,7 @@ else:
         resulting_equ = ""
         # Check if the equation is a homogeneous relation
         if not f_n_list:  # The list is empty
-            resulting_equ = solve_homogeneous_equation(init_conditions, associated)
+            resulting_equ = solve_homogeneous_equation(init_conditions, new_associated)
         else:
             resulting_equ = solve_nonhomogeneous_equation(init_conditions, associated, f_n_list)
         resulting_equ = reformat_equation(resulting_equ)
