@@ -304,9 +304,7 @@ def test(i, alpha_solutions):
     The return value is a string of the right side of the equation "s(n) = ..."""
 
 
-def find_particular_solution(associated, f_n_list):
-    print(associated)
-
+def find_particular_solution(associated_as_exp, f_n_list):
     # check if F(n) is a polynomial
     f_n_expr = parse_expr(f_n_list)
     n = symbols('n')
@@ -314,33 +312,32 @@ def find_particular_solution(associated, f_n_list):
         f_n_poly = Poly(f_n_expr, n)
         print(f_n_poly)
     except sy.PolynomialError:
-        # F(n) is not a polynomial, try an exponential solution first:
+        # F(n) is not a polynomial, try an exponential solution:
         A, B, C = symbols('A B C')
         particular_attempt = A * B ** n + C
-        substituted_solution = associated.subs({'s(n)': particular_attempt})
+        expression_symbols = associated_as_exp.free_symbols
+        for expression_symbol in expression_symbols:
+            
+        # substituted_solution = associated.subs({'s(n)': particular_attempt})
         print(particular_attempt)
-        print(substituted_solution)
+        # print(substituted_solution)
 
 
-def solve_nonhomogeneous_equation(init_conditions, associated, f_n_list):
-    print("\nnon-homogeneous")
-    print("\n{0}".format(init_conditions))
-    print(associated)
-    print("{0}\n".format(f_n_list))
+def solve_nonhomogeneous_equation(init_conditions, associated, f_n_list, associated_as_exp):
     # First we find a general solution to the associated homogeneous system:
     characteristic_poly = get_characteristic_equation(associated)
     print("characteristic polynomial: \n{0}".format(characteristic_poly))
     roots = solve(characteristic_poly)
     print("the roots are: \n{0}".format(roots))
-    general_solution = find_general_solution(roots)
-    print("The general solution is: \n{0}".format(general_solution))
+    homogeneous_solution = find_general_solution(roots)
+    print("The general solution is: \n{0}".format(homogeneous_solution))
 
     # Then we find a particular solution:
-    particular_solution = find_particular_solution(associated, f_n_list)
+    particular_solution = find_particular_solution(associated_as_exp, f_n_list)
     print("The particular solution is: \n{0}".format(particular_solution))
 
     # Add up the general and particular solutions:
-    combined_solution = particular_solution + general_solution
+    combined_solution = particular_solution + homogeneous_solution
     print("The combined solution is: \n{0}".format(combined_solution))
 
     # Fill in the initial conditions to find the closed formula
@@ -429,7 +426,9 @@ else:
             resulting_equ = solve_homogeneous_equation(init_conditions, associated)
         else:
             f_n_list = '10**(n-1)'
-            resulting_equ = solve_nonhomogeneous_equation(init_conditions, associated, f_n_list)
+            s_n_minus_1 = symbols('s(n-1)')
+            associated_as_exp = 8*s_n_minus_1
+            resulting_equ = solve_nonhomogeneous_equation(init_conditions, associated, f_n_list, associated_as_exp)
         resulting_equ = reformat_equation(resulting_equ)
         write_output_to_file(output_filename, resulting_equ)
 
