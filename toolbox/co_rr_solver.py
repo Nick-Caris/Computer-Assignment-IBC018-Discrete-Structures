@@ -152,7 +152,7 @@ def test_nick(equation, all_s_n):
 
 
 def getKey(item):
-    return item[0]
+    return item[1]
 
 
 def flatten_tuple(tuple_list):
@@ -164,15 +164,19 @@ def flatten_tuple(tuple_list):
 
 
 def combine_value(string_one, string_two):
-    right_one = string_one.find('s') - 1
-    value_one = string_one[1: right_one]
-    right_two = string_two.find('s') - 1
-    value_two = string_two[1: right_two]
+    # right_one = string_one.find('s') - 1
+    # value_one = parse_expr(string_one[1: right_one])
+    # right_two = string_two.find('s') - 1
+    # value_two = parse_expr(string_two[1: right_two])
 
-    new_value = int(value_one) + int(value_two)
-    combined = string_one[0: right_one - 1] + str(new_value) + string_one[right_one: len(string_one)]
+    value_one = parse_expr(string_one[0:len(string_one) -1])
+    value_two = parse_expr(string_two[0:len(string_two) -1])
 
-    return combined
+    print('Make new Value with these', value_one, ' and', value_two )
+    new_value = value_one + value_two
+    # combined = string_one[0: right_one - 1] + str(new_value) + string_one[right_one: len(string_one)]
+
+    return (str(new_value) + '*')
 
 
 def delete_sn(tuple):
@@ -222,11 +226,13 @@ def delete_sn_from_array(array):
 def add_the_n(all_s_n, equation):
     output_tuple_function = []
     tuple_function = make_tuple_function(all_s_n, equation)
-
+    print('TUPLE FUNCTION:', tuple_function)
     for i in range(len(tuple_function)):
-        for j in range(i + 1, len(tuple_function) - 1):
+        for j in range(i + 1, len(tuple_function)):
+            print('This',tuple_function[i][1] ,'and this', tuple_function[j][1] )
             if tuple_function[i][1] == tuple_function[j][1]:
                 print('These values are he same. one:', tuple_function[i][1], 'two:', tuple_function[j][1])
+                print('We are gonna add these values upp. one:', tuple_function[i][0], 'two:', tuple_function[j][0])
                 tuple_function[i][0] = combine_value(tuple_function[i][0], tuple_function[j][0])
                 tuple_function[j] = ''
 
@@ -266,18 +272,18 @@ def put_equation_in_order(all_s_n, equation):
     tuple_function = sorted(tuple_function, key=getKey)
 
     for i in range(len(tuple_function)):
-        output_tuple = output_tuple + [[tuple_function[i][0], 's(n-' + s_n_values[i] + ')']]
+        output_tuple = output_tuple + [[tuple_function[i][0], 's(n-' + tuple_function[i][1] + ')']]
 
     return flatten_tuple_for_whole_function(output_tuple)
 
 
 def rewrite_equation_two(equation):
-    s_n_parts = re.findall(r's\(n-\d+\)', equation)
 
-    equation = add_the_n(s_n_parts, equation)
-    print('ADDED ALL THE N', equation)
-    equation = put_equation_in_order(s_n_parts, equation)
+    equation = put_equation_in_order(re.findall(r's\(n-\d+\)', equation), equation)
     print('Put in right order', equation)
+    equation = add_the_n(re.findall(r's\(n-\d+\)', equation), equation)
+    print('ADDED ALL THE N', equation)
+
 
     return equation
 
@@ -528,7 +534,7 @@ else:
         if sys.argv[argv_index].find("/") != -1:
             path = sys.argv[argv_index]
     print(path)
-    for filename in glob.glob("../testData/comass02.txt"):
+    for filename in glob.glob("../testData/comass03.txt"):
         print("File: " + filename)
         next_symbolic_var_index = 0  # Reset this index for every file
         debug_print("Beginning for file \"{0}\"".format(filename))
