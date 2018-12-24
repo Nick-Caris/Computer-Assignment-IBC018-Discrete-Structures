@@ -22,11 +22,16 @@ DESCRIPTION
 
 import glob  # Library for filename pattern-matching
 import sympy as sy
-from sympy import sympify, roots, solve, expand, factor, symbols, rsolve, Poly  # REMOVE RSOLVE IN THE LATEST RELEASE
-from sympy.abc import r, n
+from sympy import *
 from sympy.parsing.sympy_parser import parse_expr
+from sympy.abc import r, n
+from sympy.interactive.printing import init_printing
+
+init_printing(use_unicode=False, wrap_line=False)
+from sympy.matrices import Matrix, eye, zeros, ones, diag, GramSchmidt
 import sys  # For access to the given argument
 import os  # Gives access to current location of co_rr_solver
+import re
 
 # Global variables:
 next_symbolic_var_index = 0  # This variable indicates the next index for the p_x variable names needed for Theorem 6.
@@ -131,6 +136,183 @@ def recurrent_step_length(equation, pos_s):
     return int(value), equation
 
 
+def test_nick(equation, all_s_n):
+    split_up_function = []
+
+    for s_n in all_s_n:
+        end_bit = equation.find(s_n)
+        variable_name = equation[0:end_bit]
+        function_bit = variable_name + s_n
+        split_up_function.append(function_bit)
+        equation = equation.replace(function_bit, "")
+
+    return split_up_function
+
+
+def getKey(item):
+    return item[1]
+
+
+def flatten_tuple(tuple_list):
+    string = ""
+    for item in tuple_list:
+        if item != '':
+            string += item[1]
+    return string
+
+
+def combine_value(string_one, string_two):
+    # right_one = string_one.find('s') - 1
+    # value_one = parse_expr(string_one[1: right_one])
+    # right_two = string_two.find('s') - 1
+    # value_two = parse_expr(string_two[1: right_two])
+
+    value_one = parse_expr(string_one[0:len(string_one) - 1])
+    value_two = parse_expr(string_two[0:len(string_two) - 1])
+
+    print('Make new Value with these', value_one, ' and', value_two)
+    new_value = value_one + value_two
+    # combined = string_one[0: right_one - 1] + str(new_value) + string_one[right_one: len(string_one)]
+
+    return (str(new_value) + '*')
+
+
+def delete_sn(tuple):
+    for i in range(len(tuple)):
+        tuple[i][1] = tuple[i][1][0:len(tuple[i][1]) - 6] + '1'
+    return tuple
+
+
+def rewrite_equation(equation):
+    tuple_function = []
+    output_tuple_function = []
+    for s in equation:
+        exclusive_end_pos = s.find(")", 0)
+        value = s[exclusive_end_pos - 1:exclusive_end_pos]
+        tuple_function = tuple_function + [[value, s]]
+    tuple_function = sorted(tuple_function, key=getKey)
+
+    for i in range(len(tuple_function)):
+        for j in range(i + 1, len(tuple_function) - 1):
+            if tuple_function[i][0] == tuple_function[j][0]:
+                tuple_function[i][1] = combine_value(tuple_function[i][1], tuple_function[j][1])
+                tuple_function[j] = ''
+
+    for i in range(len(tuple_function)):
+        if tuple_function[i] != '':
+            output_tuple_function = output_tuple_function + [[tuple_function[i][0], tuple_function[i][1]]]
+
+    return flatten_tuple(output_tuple_function), delete_sn(output_tuple_function)
+
+
+def flatten_tuple_for_whole_function(tuple_list):
+    string = ""
+    for item in tuple_list:
+        if item != '':
+            string += item[0] + '' + item[1]
+    return string
+
+
+def delete_sn_from_array(array):
+    return_tuple = []
+    for i in range(len(array)):
+        value = array[i][array[i].find('n') + 2: array[i].find(')')]
+        return_tuple = return_tuple + [[value, array[i][0:array[i].find('s')] + '1']]
+    return return_tuple
+
+
+def add_the_n(all_s_n, equation):
+    output_tuple_function = []
+    tuple_function = make_tuple_function(all_s_n, equation)
+    print('TUPLE FUNCTION:', tuple_function)
+    for i in range(len(tuple_function)):
+        for j in range(i + 1, len(tuple_function)):
+            print('This', tuple_function[i][1], 'and this', tuple_function[j][1])
+            if tuple_function[i][1] == tuple_function[j][1]:
+                print('These values are he same. one:', tuple_function[i][1], 'two:', tuple_function[j][1])
+                print('We are gonna add these values upp. one:', tuple_function[i][0], 'two:', tuple_function[j][0])
+                tuple_function[i][0] = combine_value(tuple_function[i][0], tuple_function[j][0])
+                tuple_function[j] = ''
+
+    for i in range(len(tuple_function)):
+        if tuple_function[i] != '':
+            output_tuple_function = output_tuple_function + [[tuple_function[i][0], tuple_function[i][1]]]
+
+    return flatten_tuple_for_whole_function(output_tuple_function)
+
+
+def make_tuple_function(all_s_n, equation):
+    tuple_function = []
+
+    for s_n in all_s_n:
+        end_bit = equation.find(s_n)
+        variable_name = equation[0:end_bit]
+        function_bit = variable_name + s_n
+        tuple_function = tuple_function + [[variable_name[0: len(variable_name)], s_n]]
+        equation = equation.replace(function_bit, "")
+
+    return tuple_function
+
+
+def put_equation_in_order(all_s_n, equation):
+    tuple_function = make_tuple_function(all_s_n, equation)
+    s_n_values = []
+    output_tuple = []
+
+    for s_n in all_s_n:
+        end = s_n.find(')')
+        begin = s_n.find('-', s_n.find('s')) + 1
+        s_n_values.append(s_n[begin:end])
+
+    for i in range(len(tuple_function)):
+        tuple_function[i][1] = s_n_values[i]
+
+    tuple_function = sorted(tuple_function, key=getKey)
+
+    for i in range(len(tuple_function)):
+        output_tuple = output_tuple + [[tuple_function[i][0], 's(n-' + tuple_function[i][1] + ')']]
+
+    return flatten_tuple_for_whole_function(output_tuple)
+
+
+def rewrite_equation_two(equation):
+    equation = put_equation_in_order(re.findall(r's\(n-\d+\)', equation), equation)
+    print('Put in right order', equation)
+    equation = add_the_n(re.findall(r's\(n-\d+\)', equation), equation)
+    print('ADDED ALL THE N', equation)
+
+    return equation
+
+
+def first_difference(str1, str2):
+    result1 = ''
+    result2 = ''
+
+    # handle the case where one string is longer than the other
+    maxlen = len(str2) if len(str1) < len(str2) else len(str1)
+
+    for i in range(maxlen):
+        # use a slice rather than index in case one string longer than other
+        letter1 = str1[i:i + 1]
+        letter2 = str2[i:i + 1]
+        # create string with differences
+        if letter1 != letter2:
+            result1 += letter1
+            result2 += letter2
+    return result1
+
+
+def function_name_not_found(equation):
+    equation = equation[5:len(equation)]  # Remove the "s(n)="-part
+
+    s_n_parts = re.findall(r's\(n-\d+\)', equation)  # Find all o the
+    split_up_function = test_nick(equation, s_n_parts)
+
+    print('Split up function', split_up_function)
+
+    return rewrite_equation_two(equation), delete_sn_from_array(split_up_function)
+
+
 """Determines and returns:
     1. A dictionary of the associated homogeneous recurrence relation in default form, where:
         -The integer-key is x of s(n-x) (thus without minus)
@@ -140,9 +322,10 @@ def recurrent_step_length(equation, pos_s):
 
 def analyze_recurrence_equation(equation):
     associated = {}
-    f_n_list = []
+    f_as_whole, new_associated = function_name_not_found(equation)
     equation = equation[5:len(equation)]  # Remove the "s(n)="-part
     pos_s = equation.find("s(n-")  # First position of recurrent part
+    f_n_list = first_difference(f_as_whole, f_as_whole)
     while pos_s >= 0:  # There is another recurrent s(n-x) part
         debug_print(equation)
         step_length, equation = recurrent_step_length(equation,
@@ -156,7 +339,8 @@ def analyze_recurrence_equation(equation):
         associated[step_length] = c_n  # Add the recursive step length and factor to the dictionary
         pos_s = equation.find("s(n-")  # First position of recurrent part (because other "s(n-"-part is already removed)
     # Sorry, but you will have to implement the treatment of F(n) yourself!
-    return associated, f_n_list
+
+    return associated, f_n_list, f_as_whole, (dict((int(x), y) for x, y in new_associated))
 
 
 """Reads in all lines of the file except the first, second and last one.
@@ -203,35 +387,31 @@ def fix_syntax(lines):
 
 def solve_homogeneous_equation(init_conditions, associated):
     characteristics = get_characteristic_equation(associated)
-    print("Characteristics equation: " + str(characteristics))
-
-    roots = solve(characteristics)
-    print("Characteristic root(s): " + str(roots))
-
-    general_solution = find_general_solution(roots)
-    print("General solution: " + str(general_solution))
-
-    alphas = solve_alpha(general_solution, init_conditions)
-    print("Alphas: " + str(alphas))
-
-    result = general_solution.subs({'alpha1': alphas[0], 'alpha2': alphas[1]})
-    print("Result: " + str(result))
-    # resultCHEAT = CHEAT_METHOD()
+    characteristic_roots = roots(characteristics)
+    general_solution, alpha_number = find_general_solution(characteristic_roots)
+    alpha_solutions = solve_alpha(general_solution, init_conditions, alpha_number)
+    result = compute_result(alpha_solutions, general_solution)
 
     return result
 
 
-""" method to check if the output from the recurrence relation was correct 
-    REMOVE THIS METHOD, INCLUDING THE RSOLVE INCLUDE AT THE TOP BEFORE RELEASE"""
+def compute_result(alpha_solutions, general_solution):
+    result = ""
 
+    for i in range(len(alpha_solutions)):
+        result += str(general_solution[i].subs({'alpha' + str(i + 1): alpha_solutions[i]}))
+        if i is not len(alpha_solutions) - 1:
+            result += "+"
+    print("result: s(n) = " + result)
 
-def CHEAT_METHOD():
-    y = symbols('y')
+    try:
+        simplified_result = simplify(result)
+        print("Simplified result: s(n) = " + str(simplified_result))
+        return simplified_result
+    except:
+        print("An error occured while simplifying the result!")
 
-    f = y(n) - y(n - 1) - y(n - 2)
-    CHEAT = rsolve(f, y(n), {y(0): 1, y(1): 1})
-
-    return CHEAT
+    return result
 
 
 def get_characteristic_equation(associated):
@@ -247,55 +427,47 @@ def get_characteristic_equation(associated):
         characteristics += ((-1) * int(value) * r ** (
                 degrees - key))  # the '-1' is used to determine the characteristic equation
 
+    print("Characteristics equation: " + str(characteristics))
     return characteristics
 
 
 def find_general_solution(roots):
-    n, a1, a2 = symbols('n alpha1 alpha2')
-    fn = 0
+    n = symbols('n')
+    fn = []
+    alpha_number = 0
 
-    for i in range(len(roots)):
-        if len(roots) == 1:
-            fn += a1 * (roots[i]) ** n + a2 * n * (roots[i]) ** n
-        else:
-            fn += symbols('alpha' + str(i + 1)) * (roots[i]) ** n
+    for root, multiplicity in roots.items():
+        print("Characteristic root: " + str(root) + ", multiplicity: " + str(multiplicity))
+        for i in range(multiplicity):
+            alpha_number += 1
+            fn.append(symbols('alpha' + str(alpha_number)) * n ** i * (root) ** n)
 
-    return fn
-
-
-def solve_alpha(general_solution, init_conditions):
-    alpha1 = None
-    alpha2 = None
-    alpha3 = None
-    alpha4 = None
-    alpha_solutions = []
-    for i in range(len(init_conditions)):  # for condition in init_conditions:
-        alpha_formula = general_solution.subs({n: i}) + ((-1) * int(init_conditions[i]))
-
-        alpha_solutions += solve(alpha_formula, "alpha" + str(i + 1))
-
-        if (i == 0):
-            alpha1 = solve(alpha_formula, 'alpha1')
-
-        if (i == 1):
-            alpha2 = solve(alpha_formula.subs({'alpha1': alpha1[0]}), 'alpha2')
-            alpha1 = alpha1[0].subs({'alpha2': alpha2[0]})
-
-        if (i == 2):
-            alpha3 = solve(alpha_formula.subs({'alpha1': alpha1[0], 'alpha2': alpha2[0]}), 'alpha3')
-            alpha2 = alpha3[0].subs({'alpha3': alpha3[0]})
-            alpha1 = alpha3[0].subs({'alpha2': alpha2, 'alpha3': alpha3[0]})
-
-    return [alpha1, alpha2[0]]
+    print("General solution: " + str(fn))
+    return [fn, alpha_number]
 
 
-def test(i, alpha_solutions):
-    if (i == 0):
-        return {}
-    if (i == 1):
-        return {"alpha" + str(i): alpha_solutions[i - 1]}
-    if (i == 2):
-        return {"alpha" + str(i - 1): alpha_solutions[i - 2], "alpha" + str(i): alpha_solutions[i - 1]}
+def solve_alpha(general_solution, init_conditions, roots_amount):
+    matrix_length = len(init_conditions)  # vertical alignment
+    matrix_width = roots_amount  # horizontal alignment
+    matrix_general_solution = []
+    matrix_init_conditions = []
+    matrix_solutions = []
+
+    for i in range(matrix_length):  # for condition in init_conditions:
+        for j in range(len(general_solution)):
+            matrix_general_solution.append(general_solution[j].subs({n: i, "alpha" + str(j + 1): 1}))
+        matrix_init_conditions.append(parse_expr(init_conditions[i]))
+
+    M_general_solution = Matrix(matrix_length, matrix_width, matrix_general_solution)
+    M_init_conditions = Matrix(matrix_length, 1, matrix_init_conditions)
+    sol, params = M_general_solution.gauss_jordan_solve(M_init_conditions)
+
+    for list in sol.tolist():
+        for sublist in list:
+            matrix_solutions.append(sublist)
+
+    print("Alphas: " + str(matrix_solutions))
+    return matrix_solutions
 
 
 """Finds a closed formula for a nonhomogeneous equation, where the nonhomogeneous part consists
@@ -317,7 +489,7 @@ def find_particular_solution(associated_as_exp, f_n_list):
         particular_attempt = A * B ** n + C
         expression_symbols = associated_as_exp.free_symbols
         for expression_symbol in expression_symbols:
-            
+
         # substituted_solution = associated.subs({'s(n)': particular_attempt})
         print(particular_attempt)
         # print(substituted_solution)
@@ -363,6 +535,7 @@ def write_output_to_file(filename, equation):
 
 
 def reformat_equation(equation):
+    equation = str(equation)
     equation = equation.replace("**", "^")
     pos_sqrt = equation.find("sqrt(")
     while pos_sqrt >= 0:
@@ -408,7 +581,7 @@ else:
             tmp -= 1
         init_conditions = det_init_conditions([lines[index] for index in range(1,
                                                                                tmp)])  # Determine initial conditions with all but the first line as input
-        associated, f_n_list = analyze_recurrence_equation(lines[0])
+        associated, f_n_list, f_as_whole, new_associated = analyze_recurrence_equation(lines[0])
 
         # Print debugging information:
         debug_print(filename)
@@ -418,17 +591,17 @@ else:
         debug_print(associated)
         debug_print("F(n):")
         debug_print(f_n_list)
-
+        debug_print("Function:")
+        debug_print(f_as_whole)
+        debug_print("New Associated:")
+        debug_print(new_associated)
         output_filename = filename.replace(".txt", "-dir.txt")
         resulting_equ = ""
         # Check if the equation is a homogeneous relation
-        if not True:  # f_n_list:  # The list is empty
-            resulting_equ = solve_homogeneous_equation(init_conditions, associated)
+        if not f_n_list:  # The list is empty
+            resulting_equ = solve_homogeneous_equation(init_conditions, new_associated)
         else:
-            f_n_list = '10**(n-1)'
-            s_n_minus_1 = symbols('s(n-1)')
-            associated_as_exp = 8*s_n_minus_1
-            resulting_equ = solve_nonhomogeneous_equation(init_conditions, associated, f_n_list, associated_as_exp)
+            resulting_equ = solve_nonhomogeneous_equation(init_conditions, associated, f_n_list)
         resulting_equ = reformat_equation(resulting_equ)
         write_output_to_file(output_filename, resulting_equ)
 
