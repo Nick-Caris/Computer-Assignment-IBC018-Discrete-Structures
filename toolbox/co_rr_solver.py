@@ -169,10 +169,10 @@ def combine_value(string_one, string_two):
     # right_two = string_two.find('s') - 1
     # value_two = parse_expr(string_two[1: right_two])
 
-    value_one = parse_expr(string_one[0:len(string_one) -1])
-    value_two = parse_expr(string_two[0:len(string_two) -1])
+    value_one = parse_expr(string_one[0:len(string_one) - 1])
+    value_two = parse_expr(string_two[0:len(string_two) - 1])
 
-    print('Make new Value with these', value_one, ' and', value_two )
+    print('Make new Value with these', value_one, ' and', value_two)
     new_value = value_one + value_two
     # combined = string_one[0: right_one - 1] + str(new_value) + string_one[right_one: len(string_one)]
 
@@ -218,7 +218,7 @@ def flatten_tuple_for_whole_function(tuple_list):
 def delete_sn_from_array(array):
     return_tuple = []
     for i in range(len(array)):
-        value = array[i][array[i].find('n') + 2 : array[i].find(')')]
+        value = array[i][array[i].find('n') + 2: array[i].rfind(')')]
         return_tuple = return_tuple + [[value, array[i][0:array[i].find('s')] + '1']]
     return return_tuple
 
@@ -229,7 +229,7 @@ def add_the_n(all_s_n, equation):
     print('TUPLE FUNCTION:', tuple_function)
     for i in range(len(tuple_function)):
         for j in range(i + 1, len(tuple_function)):
-            print('This',tuple_function[i][1] ,'and this', tuple_function[j][1] )
+            print('This', tuple_function[i][1], 'and this', tuple_function[j][1])
             if tuple_function[i][1] == tuple_function[j][1]:
                 print('These values are he same. one:', tuple_function[i][1], 'two:', tuple_function[j][1])
                 print('We are gonna add these values upp. one:', tuple_function[i][0], 'two:', tuple_function[j][0])
@@ -278,12 +278,10 @@ def put_equation_in_order(all_s_n, equation):
 
 
 def rewrite_equation_two(equation):
-
     equation = put_equation_in_order(re.findall(r's\(n-\d+\)', equation), equation)
     print('Put in right order', equation)
     equation = add_the_n(re.findall(r's\(n-\d+\)', equation), equation)
     print('ADDED ALL THE N', equation)
-
 
     return equation
 
@@ -329,7 +327,7 @@ def analyze_recurrence_equation(equation):
     f_as_whole, new_associated = function_name_not_found(equation)
     equation = equation[5:len(equation)]  # Remove the "s(n)="-part
     pos_s = equation.find("s(n-")  # First position of recurrent part
-    f_n_list = first_difference(f_as_whole, f_as_whole)
+    f_n_list = first_difference(equation, f_as_whole)
     while pos_s >= 0:  # There is another recurrent s(n-x) part
         debug_print(equation)
         step_length, equation = recurrent_step_length(equation,
@@ -344,6 +342,7 @@ def analyze_recurrence_equation(equation):
         pos_s = equation.find("s(n-")  # First position of recurrent part (because other "s(n-"-part is already removed)
     # Sorry, but you will have to implement the treatment of F(n) yourself!
 
+    print('DEze word niew associated: ', new_associated)
     return associated, f_n_list, f_as_whole, (dict((int(x), y) for x, y in new_associated))
 
 
@@ -534,7 +533,7 @@ else:
         if sys.argv[argv_index].find("/") != -1:
             path = sys.argv[argv_index]
     print(path)
-    for filename in glob.glob("../testData/comass03.txt"):
+    for filename in glob.glob("../testData/comass33.txt"):
         print("File: " + filename)
         next_symbolic_var_index = 0  # Reset this index for every file
         debug_print("Beginning for file \"{0}\"".format(filename))
