@@ -340,7 +340,6 @@ def analyze_recurrence_equation(equation):
         equation = equation.replace(c_n, "", 1)  # Remove the actual c_n from the equation (only once)
         associated[step_length] = c_n  # Add the recursive step length and factor to the dictionary
         pos_s = equation.find("s(n-")  # First position of recurrent part (because other "s(n-"-part is already removed)
-    # Sorry, but you will have to implement the treatment of F(n) yourself!
 
     print('DEze word niew associated: ', new_associated)
     return associated, f_n_list, f_as_whole, (dict((int(x), y) for x, y in new_associated))
@@ -449,9 +448,9 @@ def find_general_solution(roots):
     return [fn, alpha_number]
 
 
-def solve_alpha(general_solution, init_conditions, roots_amount):
+def solve_alpha(general_solution, init_conditions, alpha_amount):
     matrix_length = len(init_conditions)  # vertical alignment
-    matrix_width = roots_amount  # horizontal alignment
+    matrix_width = alpha_amount  # horizontal alignment
     matrix_general_solution = []
     matrix_init_conditions = []
     matrix_solutions = []
@@ -479,9 +478,52 @@ def solve_alpha(general_solution, init_conditions, roots_amount):
     The return value is a string of the right side of the equation "s(n) = ..."""
 
 
+def find_particular_solution(associated, f_n_list):
+    # Convert associated to an expression
+    print(associated)
+    terms = [0]  # Initialise the first term with zero, because S(n-0) is not relevant
+    for key, value in associated.items():
+        terms.append(symbols('s(n-{0})'.format(key)))
+    print("terms: ")
+    print(terms)
+    # check if F(n) is a polynomial
+    f_n_expr = parse_expr(f_n_list)
+    n = symbols('n')
+    try:
+        f_n_poly = Poly(f_n_expr, n)
+        print(f_n_poly)
+    except sy.PolynomialError:
+        # F(n) is not a polynomial, try an exponential solution:
+        A, B, C = symbols('A B C')
+        particular_attempt = A * B ** n + C
+        expression_symbols = associated_as_exp.free_symbols
+        # for expression_symbol in expression_symbols:
+
+        # substituted_solution = associated.subs({'s(n)': particular_attempt})
+        print(particular_attempt)
+        # print(substituted_solution)
+
+
 def solve_nonhomogeneous_equation(init_conditions, associated, f_n_list):
-    # You have to implement this yourself!
-    return result
+    # First we find a general solution to the associated homogeneous system:
+    characteristic_poly = get_characteristic_equation(associated)
+    print("characteristic polynomial: \n{0}".format(characteristic_poly))
+    characteristic_roots = roots(characteristic_poly)
+    print("the roots are: \n{0}".format(characteristic_roots))
+    homogeneous_solution, alpha_amount = find_general_solution(characteristic_roots)
+    print("The general solution is: \n{0}".format(homogeneous_solution))
+
+    # Then we find a particular solution:
+    particular_solution = find_particular_solution(associated, f_n_list)
+    print("The particular solution is: \n{0}".format(particular_solution))
+
+    # Add up the general and particular solutions:
+    combined_solution = particular_solution + homogeneous_solution
+    print("The combined solution is: \n{0}".format(combined_solution))
+
+    # Fill in the initial conditions to find the closed formula
+    solution = solve_alpha(combined_solution, init_conditions, alpha_amount)
+    return solution
 
 
 """Transforms the string equation, that is of the right side of the form "s(n) = ...",
