@@ -33,6 +33,8 @@ import sys  # For access to the given argument
 import os  # Gives access to current location of co_rr_solver
 import re
 
+# import interrools
+
 # Global variables:
 next_symbolic_var_index = 0  # This variable indicates the next index for the p_x variable names needed for Theorem 6.
 print_debug_information = False  # This variable indicates whether debug information should be printed (this is read in using the command line argument list)
@@ -216,7 +218,7 @@ def flatten_tuple_for_whole_function(tuple_list):
 def delete_sn_from_array(array):
     return_tuple = []
     for i in range(len(array)):
-        value = array[i][array[i].find('n') + 2: array[i].find(')')]
+        value = array[i][array[i].find('n') + 2: array[i].rfind(')')]
         return_tuple = return_tuple + [[value, array[i][0:array[i].find('s')] + '1']]
     return return_tuple
 
@@ -325,7 +327,7 @@ def analyze_recurrence_equation(equation):
     f_as_whole, new_associated = function_name_not_found(equation)
     equation = equation[5:len(equation)]  # Remove the "s(n)="-part
     pos_s = equation.find("s(n-")  # First position of recurrent part
-    f_n_list = first_difference(f_as_whole, f_as_whole)
+    f_n_list = first_difference(equation, f_as_whole)
     while pos_s >= 0:  # There is another recurrent s(n-x) part
         debug_print(equation)
         step_length, equation = recurrent_step_length(equation,
@@ -338,8 +340,8 @@ def analyze_recurrence_equation(equation):
         equation = equation.replace(c_n, "", 1)  # Remove the actual c_n from the equation (only once)
         associated[step_length] = c_n  # Add the recursive step length and factor to the dictionary
         pos_s = equation.find("s(n-")  # First position of recurrent part (because other "s(n-"-part is already removed)
-    # Sorry, but you will have to implement the treatment of F(n) yourself!
 
+    print('DEze word niew associated: ', new_associated)
     return associated, f_n_list, f_as_whole, (dict((int(x), y) for x, y in new_associated))
 
 
@@ -446,9 +448,9 @@ def find_general_solution(roots):
     return [fn, alpha_number]
 
 
-def solve_alpha(general_solution, init_conditions, roots_amount):
+def solve_alpha(general_solution, init_conditions, alpha_amount):
     matrix_length = len(init_conditions)  # vertical alignment
-    matrix_width = roots_amount  # horizontal alignment
+    matrix_width = alpha_amount  # horizontal alignment
     matrix_general_solution = []
     matrix_init_conditions = []
     matrix_solutions = []
@@ -470,42 +472,72 @@ def solve_alpha(general_solution, init_conditions, roots_amount):
     return matrix_solutions
 
 
+"""Converts a dictionary of the form associated as returned by analyze_recurrence_relation to a sympy expression"""
+
+
+def associated_to_exp(associated):
+    terms = {}
+    expression = 0
+    for key, value in associated.items():
+        terms[key] = symbols('s_n{0}'.format(key))
+        exp = parse_expr(re.sub("\*1", "*{0}".format(terms[key]), value))
+        expression = expression + exp
+
+    return expression, terms
+
+
+def find_particular_solution(associated, f_n_list):
+    # Convert associated to an expression
+    associated_as_exp, associated_symbols = associated_to_exp(associated)
+    print("associated as exp:\t{0}".format(associated_as_exp))
+    # check if F(n) is a polynomial
+    f_n_expr = parse_expr(f_n_list)
+    try:
+        f_n_poly = Poly(f_n_expr, n)
+        print(f_n_poly)
+        # TODO: implement finding a polynomial solution
+    except sy.PolynomialError:
+        # F(n) is not a polynomial, try an exponential solution:
+        A, B, C = symbols('A B C')
+        particular_attempt = A * B ** n + C
+        particular_other_n = {}
+        for key in associated_symbols.keys():
+            particular_other_n[key] = particular_attempt.subs(n, n - key)
+        for key, value in associated_symbols.items():
+            associated_as_exp = associated_as_exp.subs(value, particular_other_n[key])
+        print(associated_as_exp)
+        particular_solution = sy.solve(associated_as_exp - particular_attempt, [A, B, C], particular=True)
+        print(particular_solution)
+        particular_non_free_symbols = particular_solution[0].copy().keys()
+        particular_free_symbols = [symbol for symbol in [A, B, C] if symbol not in particular_non_free_symbols]
+        print("particular[0]: {0}".format(particular_solution[0]))
+        for symbol in particular_free_symbols:
+            for nf_symbol in particular_non_free_symbols:
+                particular_solution[0][nf_symbol] = particular_solution[0][nf_symbol].subs(symbol, 1)
+            particular_solution[0][symbol] = 1
+        print("particular[0]: {0}".format(particular_solution[0]))
+        for key, value in particular_solution[0].items():
+            particular_attempt = particular_attempt.subs(key, value)
+        return particular_attempt
+
+
 """Finds a closed formula for a nonhomogeneous equation, where the nonhomogeneous part consists
     of a linear combination of constants, "r*n^x" with r a real number and x a positive natural number,
     and "r*s^n" with r and s being real numbers.
     The return value is a string of the right side of the equation "s(n) = ..."""
 
 
-def find_particular_solution(associated_as_exp, f_n_list):
-    # check if F(n) is a polynomial
-    f_n_expr = parse_expr(f_n_list)
-    n = symbols('n')
-    try:
-        f_n_poly = Poly(f_n_expr, n)
-        print(f_n_poly)
-    except sy.PolynomialError:
-        # F(n) is not a polynomial, try an exponential solution:
-        A, B, C = symbols('A B C')
-        particular_attempt = A * B ** n + C
-        expression_symbols = associated_as_exp.free_symbols
-        for expression_symbol in expression_symbols:
-
-        # substituted_solution = associated.subs({'s(n)': particular_attempt})
-        print(particular_attempt)
-        # print(substituted_solution)
-
-
-def solve_nonhomogeneous_equation(init_conditions, associated, f_n_list, associated_as_exp):
+def solve_nonhomogeneous_equation(init_conditions, associated, f_n_list):
     # First we find a general solution to the associated homogeneous system:
     characteristic_poly = get_characteristic_equation(associated)
     print("characteristic polynomial: \n{0}".format(characteristic_poly))
-    roots = solve(characteristic_poly)
-    print("the roots are: \n{0}".format(roots))
-    homogeneous_solution = find_general_solution(roots)
+    characteristic_roots = roots(characteristic_poly)
+    print("the roots are: \n{0}".format(characteristic_roots))
+    homogeneous_solution, alpha_amount = find_general_solution(characteristic_roots)
     print("The general solution is: \n{0}".format(homogeneous_solution))
 
     # Then we find a particular solution:
-    particular_solution = find_particular_solution(associated_as_exp, f_n_list)
+    particular_solution = find_particular_solution(associated, f_n_list)
     print("The particular solution is: \n{0}".format(particular_solution))
 
     # Add up the general and particular solutions:
@@ -513,7 +545,7 @@ def solve_nonhomogeneous_equation(init_conditions, associated, f_n_list, associa
     print("The combined solution is: \n{0}".format(combined_solution))
 
     # Fill in the initial conditions to find the closed formula
-    solution = solve_alpha(combined_solution, init_conditions)
+    solution = solve_alpha(combined_solution, init_conditions, alpha_amount)
     return solution
 
 
@@ -566,7 +598,7 @@ else:
         if sys.argv[argv_index].find("/") != -1:
             path = sys.argv[argv_index]
     print(path)
-    for filename in glob.glob("../testData/non-homogeneous-test.txt"):
+    for filename in glob.glob("../testData/comass03.txt"):
         print("File: " + filename)
         next_symbolic_var_index = 0  # Reset this index for every file
         debug_print("Beginning for file \"{0}\"".format(filename))
