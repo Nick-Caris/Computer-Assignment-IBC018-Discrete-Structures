@@ -546,6 +546,21 @@ def find_particular_solution(associated, f_n_list):
         return particular_attempt
 
 
+def solve_alpha_non_homogeneous(combined_solution, init_conditions, alphas_amount):
+    alphas = []
+    for i in range(1, alphas_amount + 1):
+        alphas.append('alpha{0}'.format(i))
+    equations = []
+    for key, value in init_conditions.items():
+        equations.append(Eq(combined_solution.subs(n, key), float(value)))
+    print(equations)
+    solved_alphas = solve(equations, alphas)
+    print(solved_alphas)
+    for key, value in solved_alphas.items():
+        combined_solution = combined_solution.subs(key, value)
+    return combined_solution
+
+
 """Finds a closed formula for a nonhomogeneous equation, where the nonhomogeneous part consists
     of a linear combination of constants, "r*n^x" with r a real number and x a positive natural number,
     and "r*s^n" with r and s being real numbers.
@@ -566,11 +581,12 @@ def solve_nonhomogeneous_equation(init_conditions, associated, f_n_list):
     print("The particular solution is: \n{0}".format(particular_solution))
 
     # Add up the general and particular solutions:
-    combined_solution = particular_solution + homogeneous_solution
+    combined_solution = particular_solution + sum(homogeneous_solution)
     print("The combined solution is: \n{0}".format(combined_solution))
 
     # Fill in the initial conditions to find the closed formula
-    solution = solve_alpha(combined_solution, init_conditions, alpha_amount)
+    solution = solve_alpha_non_homogeneous(combined_solution, init_conditions, alpha_amount)
+    print("The total solution is: \n{0}".format(solution))
     return solution
 
 
@@ -623,7 +639,7 @@ else:
         if sys.argv[argv_index].find("/") != -1:
             path = sys.argv[argv_index]
     print(path)
-    for filename in glob.glob("../testData/comass03.txt"):
+    for filename in glob.glob("../testData/non-homogeneous-test-3.txt"):
         print("File: " + filename)
         next_symbolic_var_index = 0  # Reset this index for every file
         debug_print("Beginning for file \"{0}\"".format(filename))
