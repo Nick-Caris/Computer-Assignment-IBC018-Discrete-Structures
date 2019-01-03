@@ -277,6 +277,27 @@ def put_equation_in_order(all_s_n, equation):
     return flatten_tuple_for_whole_function(output_tuple)
 
 
+# This is an other version on the put in right order made for findinf the f(n)
+
+def take_out_fN(all_s_n, equation):
+    tuple_function = make_tuple_function(all_s_n, equation)
+    s_n_values = []
+    output_tuple = []
+
+    for s_n in all_s_n:
+        end = s_n.find(')')
+        begin = s_n.find('-', s_n.find('s')) + 1
+        s_n_values.append(s_n[begin:end])
+
+    for i in range(len(tuple_function)):
+        tuple_function[i][1] = s_n_values[i]
+
+    for i in range(len(tuple_function)):
+        output_tuple = output_tuple + [[tuple_function[i][0], 's(n-' + tuple_function[i][1] + ')']]
+
+    return flatten_tuple_for_whole_function(output_tuple)
+
+
 def rewrite_equation_two(equation):
     equation = put_equation_in_order(re.findall(r's\(n-\d+\)', equation), equation)
     print('Put in right order', equation)
@@ -289,7 +310,7 @@ def rewrite_equation_two(equation):
 def first_difference(str1, str2):
     result1 = ''
     result2 = ''
-
+    print('Zoek verschil tussen;', str1, 'and', str2)
     # handle the case where one string is longer than the other
     maxlen = len(str2) if len(str1) < len(str2) else len(str1)
 
@@ -307,12 +328,13 @@ def first_difference(str1, str2):
 def function_name_not_found(equation):
     equation = equation[5:len(equation)]  # Remove the "s(n)="-part
 
-    s_n_parts = re.findall(r's\(n-\d+\)', equation)  # Find all o the
-    split_up_function = test_nick(equation, s_n_parts)
+    rewritten_equation = rewrite_equation_two(equation)
+    s_n_parts = re.findall(r's\(n-\d+\)', rewritten_equation)  # Find all o the
+    split_up_function = test_nick(rewritten_equation, s_n_parts)
 
     print('Split up function', split_up_function)
 
-    return rewrite_equation_two(equation), delete_sn_from_array(split_up_function)
+    return rewritten_equation, delete_sn_from_array(split_up_function)
 
 
 """Determines and returns:
@@ -324,10 +346,13 @@ def function_name_not_found(equation):
 
 def analyze_recurrence_equation(equation):
     associated = {}
+    equation_whiteout_sn = equation[5:len(equation)]  # Remove the "s(n)="-part
+    whiteout_fn = take_out_fN(re.findall(r's\(n-\d+\)', equation_whiteout_sn), equation_whiteout_sn)
     f_as_whole, new_associated = function_name_not_found(equation)
     equation = equation[5:len(equation)]  # Remove the "s(n)="-part
     pos_s = equation.find("s(n-")  # First position of recurrent part
-    f_n_list = first_difference(equation, f_as_whole)
+    f_n_list = first_difference(equation, whiteout_fn)
+    print('Dit zijn de verscillen:', f_n_list)
     while pos_s >= 0:  # There is another recurrent s(n-x) part
         debug_print(equation)
         step_length, equation = recurrent_step_length(equation,
@@ -342,7 +367,7 @@ def analyze_recurrence_equation(equation):
         pos_s = equation.find("s(n-")  # First position of recurrent part (because other "s(n-"-part is already removed)
     # Sorry, but you will have to implement the treatment of F(n) yourself!
 
-    print('DEze word niew associated: ', new_associated)
+    print('Deze word nieuw associated: ', new_associated)
     return associated, f_n_list, f_as_whole, (dict((int(x), y) for x, y in new_associated))
 
 
