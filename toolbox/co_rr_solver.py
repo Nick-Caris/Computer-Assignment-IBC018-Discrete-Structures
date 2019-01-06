@@ -524,25 +524,18 @@ def find_particular_solution(associated, f_n_list):
     except sy.PolynomialError:
         # F(n) is not a polynomial, try an exponential solution:
         A, B, C = symbols('A B C')
-        particular_attempt = A * B ** n + C
+        particular_attempt = A * 4 ** n
         particular_other_n = {}
         for key in associated_symbols.keys():
             particular_other_n[key] = particular_attempt.subs(n, n - key)
         for key, value in associated_symbols.items():
             associated_as_exp = associated_as_exp.subs(value, particular_other_n[key])
+        associated_as_exp = associated_as_exp + f_n_expr
         print(associated_as_exp)
-        particular_solution = sy.solve(associated_as_exp - particular_attempt, [A, B, C], particular=True)
+        particular_solution = sy.solve(Eq(associated_as_exp, particular_attempt), A, particular=True)
         print(particular_solution)
-        particular_non_free_symbols = particular_solution[0].copy().keys()
-        particular_free_symbols = [symbol for symbol in [A, B, C] if symbol not in particular_non_free_symbols]
-        print("particular[0]: {0}".format(particular_solution[0]))
-        for symbol in particular_free_symbols:
-            for nf_symbol in particular_non_free_symbols:
-                particular_solution[0][nf_symbol] = particular_solution[0][nf_symbol].subs(symbol, 1)
-            particular_solution[0][symbol] = 1
-        print("particular[0]: {0}".format(particular_solution[0]))
-        for key, value in particular_solution[0].items():
-            particular_attempt = particular_attempt.subs(key, value)
+        for solution in particular_solution:
+            particular_attempt = particular_attempt.subs(A, solution)
         return particular_attempt
 
 
