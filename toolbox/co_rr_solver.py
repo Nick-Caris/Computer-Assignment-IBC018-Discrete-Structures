@@ -513,6 +513,8 @@ def associated_to_exp(associated):
 
 
 def find_particular_solution(associated, f_n_list):
+    
+
     # Convert associated to an expression
     associated_as_exp, associated_symbols = associated_to_exp(associated)
     print("associated as exp:\t{0}".format(associated_as_exp))
@@ -587,7 +589,8 @@ def solve_nonhomogeneous_equation(init_conditions, associated, f_n_list):
 
 def rewrite_fn_list(f_n_list):
     alphabet = [symbols('A'), symbols('B'), symbols('C'), symbols('D'), symbols('E'), symbols('F'), symbols('G'), symbols('H'), symbols('I'), symbols('J')]
-    args = parse_expr(f_n_list, evaluate=False).args
+    list = parse_expr(f_n_list)
+    args = parse_expr(f_n_list).args
     result = ""
 
     for i in range(len(args)):
@@ -596,8 +599,7 @@ def rewrite_fn_list(f_n_list):
             result += "+"
         print(result)
 
-    return result
-    
+    return parse_expr(result)
 
 """Transforms the string equation, that is of the right side of the form "s(n) = ...",
     and wirtes it towards the file "filename", which also needs to contain the desired path."""
