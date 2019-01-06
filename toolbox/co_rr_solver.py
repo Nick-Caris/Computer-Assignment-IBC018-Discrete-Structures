@@ -21,14 +21,15 @@ DESCRIPTION
 """
 
 import glob  # Library for filename pattern-matching
+
 import sympy as sy
 from sympy import *
-from sympy.parsing.sympy_parser import parse_expr
-from sympy.abc import r, n
+from sympy.abc import n
 from sympy.interactive.printing import init_printing
+from sympy.parsing.sympy_parser import parse_expr
 
 init_printing(use_unicode=False, wrap_line=False)
-from sympy.matrices import Matrix, eye, zeros, ones, diag, GramSchmidt
+from sympy.matrices import Matrix
 import sys  # For access to the given argument
 import os  # Gives access to current location of co_rr_solver
 import re
@@ -511,32 +512,66 @@ def associated_to_exp(associated):
     return expression, terms
 
 
-def find_particular_solution(associated, f_n_list):
+def find_particular_solution(associated, f_n_list, roots):
     # Convert associated to an expression
     associated_as_exp, associated_symbols = associated_to_exp(associated)
     print("associated as exp:\t{0}".format(associated_as_exp))
     # check if F(n) is a polynomial
     f_n_expr = parse_expr(f_n_list)
+    particular_attempt = 0
+    particular_symbols = []
     try:
-        f_n_poly = Poly(f_n_expr, n)
-        print(f_n_poly)
-        # TODO: implement finding a polynomial solution
+        poly = Poly(f_n_expr, n)
+        # F(n) is a polynomial
+        print(poly)
+        degree = poly.degree()
+        print(degree)
+        for power in range(degree, -1, -1):
+            symbol = symbols('p{0}'.format(power))
+            particular_symbols.append(symbol)
+            particular_attempt = particular_attempt + symbol * n ** power
+        # S = 1, so compensate if 1 is a root
+        if 1 in roots:
+            particular_attempt = n**roots[1] * particular_attempt
     except sy.PolynomialError:
         # F(n) is not a polynomial, try an exponential solution:
-        A, B, C = symbols('A B C')
-        particular_attempt = A * 4 ** n
-        particular_other_n = {}
-        for key in associated_symbols.keys():
-            particular_other_n[key] = particular_attempt.subs(n, n - key)
-        for key, value in associated_symbols.items():
-            associated_as_exp = associated_as_exp.subs(value, particular_other_n[key])
-        associated_as_exp = associated_as_exp + f_n_expr
-        print(associated_as_exp)
-        particular_solution = sy.solve(Eq(associated_as_exp, particular_attempt), A, particular=True)
-        print(particular_solution)
-        for solution in particular_solution:
-            particular_attempt = particular_attempt.subs(A, solution)
-        return particular_attempt
+        A, B = symbols('A B')
+        particular_symbols = [A]
+        # Find the base of the exponential
+        base = re.search(r'\d\*\*\(n', f_n_list).group()
+        base = re.search(r'\d', base).group()
+        base = parse_expr(base)
+        particular_attempt = A * 41 ** n
+        if base in roots:
+            particular_attempt = n**roots[base] * particular_attempt
+
+    particular_other_n = {}
+    for key in associated_symbols.keys():
+        particular_other_n[key] = particular_attempt.subs(n, n - key)
+    for key, value in associated_symbols.items():
+        associated_as_exp = associated_as_exp.subs(value, particular_other_n[key])
+    associated_as_exp = associated_as_exp + f_n_expr
+    print(associated_as_exp)
+    print(particular_attempt)
+    particular_solution = sy.solve(Eq(associated_as_exp, particular_attempt), particular_symbols, particular=True)
+    print(particular_solution)
+    if type(particular_solution) is list:  # Dirty fix
+        particular_attempt = particular_attempt.subs(particular_symbols[0], particular_solution[0])
+    else:
+        for key, value in particular_solution.items():
+            particular_attempt = particular_attempt.subs(key, value)
+    # particular_non_free_symbols = particular_solution[0].copy().keys()
+    # particular_free_symbols = [symbol for symbol in particular_symbols if symbol not in particular_non_free_symbols]
+    # print("particular[0]: {0}".format(particular_solution[0]))
+    # for symbol in particular_free_symbols:
+    #     for nf_symbol in particular_non_free_symbols:
+    #         particular_solution[0][nf_symbol] = particular_solution[0][nf_symbol].subs(symbol, 1)
+    #     particular_solution[0][symbol] = 0
+    # print("particular[0]: {0}".format(particular_solution[0]))
+    # for key, value in particular_solution[0].items():
+    #     particular_attempt = particular_attempt.subs(key, value)
+    # particular_solution = particular_solution[0].subs(n, 1)
+    return particular_attempt
 
 
 def solve_alpha_non_homogeneous(combined_solution, init_conditions, alphas_amount):
@@ -570,7 +605,7 @@ def solve_nonhomogeneous_equation(init_conditions, associated, f_n_list):
     print("The general solution is: \n{0}".format(homogeneous_solution))
 
     # Then we find a particular solution:
-    particular_solution = find_particular_solution(associated, f_n_list)
+    particular_solution = find_particular_solution(associated, f_n_list, characteristic_roots)
     print("The particular solution is: \n{0}".format(particular_solution))
 
     # Add up the general and particular solutions:
@@ -632,7 +667,7 @@ else:
         if sys.argv[argv_index].find("/") != -1:
             path = sys.argv[argv_index]
     print(path)
-    for filename in glob.glob("../testData/non-homogeneous-test-3.txt"):
+    for filename in glob.glob("../testData/comass33.txt"):
         print("File: " + filename)
         next_symbolic_var_index = 0  # Reset this index for every file
         debug_print("Beginning for file \"{0}\"".format(filename))
