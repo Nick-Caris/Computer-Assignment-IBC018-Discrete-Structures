@@ -451,7 +451,8 @@ def get_characteristic_equation(associated):
     for key in associated:
         # associated.get(key) will return something like '-2*1', split() removes the unwanted '*1'
         value = associated.get(key).split('*')[0]
-        characteristics += ((-1) * int(value) * r ** (
+
+        characteristics += ((-1) * parse_expr(value) * r ** (
                 degrees - key))  # the '-1' is used to determine the characteristic equation
 
     print("Characteristics equation: " + str(characteristics))
@@ -569,6 +570,8 @@ def solve_nonhomogeneous_equation(init_conditions, associated, f_n_list):
     homogeneous_solution, alpha_amount = find_general_solution(characteristic_roots)
     print("The general solution is: \n{0}".format(homogeneous_solution))
 
+    f = rewrite_fn_list(f_n_list)
+
     # Then we find a particular solution:
     particular_solution = find_particular_solution(associated, f_n_list)
     print("The particular solution is: \n{0}".format(particular_solution))
@@ -582,6 +585,19 @@ def solve_nonhomogeneous_equation(init_conditions, associated, f_n_list):
     print("The total solution is: \n{0}".format(solution))
     return solution
 
+def rewrite_fn_list(f_n_list):
+    alphabet = [symbols('A'), symbols('B'), symbols('C'), symbols('D'), symbols('E'), symbols('F'), symbols('G'), symbols('H'), symbols('I'), symbols('J')]
+    args = parse_expr(f_n_list, evaluate=False).args
+    result = ""
+
+    for i in range(len(args)):
+        result += str(args[i] * alphabet[i])
+        if i is not len(args) - 1:
+            result += "+"
+        print(result)
+
+    return result
+    
 
 """Transforms the string equation, that is of the right side of the form "s(n) = ...",
     and wirtes it towards the file "filename", which also needs to contain the desired path."""
@@ -632,7 +648,7 @@ else:
         if sys.argv[argv_index].find("/") != -1:
             path = sys.argv[argv_index]
     print(path)
-    for filename in glob.glob("../testData/non-homogeneous-test-3.txt"):
+    for filename in glob.glob("../testData/comass16.txt"):
         print("File: " + filename)
         next_symbolic_var_index = 0  # Reset this index for every file
         debug_print("Beginning for file \"{0}\"".format(filename))
