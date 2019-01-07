@@ -452,7 +452,7 @@ def get_characteristic_equation(associated):
     for key in associated:
         # associated.get(key) will return something like '-2*1', split() removes the unwanted '*1'
         value = associated.get(key).split('*')[0]
-        characteristics += ((-1) * int(value) * r ** (
+        characteristics += ((-1) * parse_expr(value) * r ** (
                 degrees - key))  # the '-1' is used to determine the characteristic equation
 
     print("Characteristics equation: " + str(characteristics))
@@ -561,17 +561,6 @@ def find_particular_solution(associated, f_n_list, roots):
     else:
         for key, value in particular_solution.items():
             particular_attempt = particular_attempt.subs(key, value)
-    # particular_non_free_symbols = particular_solution[0].copy().keys()
-    # particular_free_symbols = [symbol for symbol in particular_symbols if symbol not in particular_non_free_symbols]
-    # print("particular[0]: {0}".format(particular_solution[0]))
-    # for symbol in particular_free_symbols:
-    #     for nf_symbol in particular_non_free_symbols:
-    #         particular_solution[0][nf_symbol] = particular_solution[0][nf_symbol].subs(symbol, 1)
-    #     particular_solution[0][symbol] = 0
-    # print("particular[0]: {0}".format(particular_solution[0]))
-    # for key, value in particular_solution[0].items():
-    #     particular_attempt = particular_attempt.subs(key, value)
-    # particular_solution = particular_solution[0].subs(n, 1)
     return particular_attempt
 
 
@@ -581,7 +570,7 @@ def solve_alpha_non_homogeneous(combined_solution, init_conditions, alphas_amoun
         alphas.append('alpha{0}'.format(i))
     equations = []
     for key, value in init_conditions.items():
-        equations.append(Eq(combined_solution.subs(n, key), float(value)))
+        equations.append(Eq(combined_solution.subs(n, key), parse_expr(value)))
     print(equations)
     solved_alphas = solve(equations, alphas)
     print(solved_alphas)
@@ -668,7 +657,7 @@ else:
         if sys.argv[argv_index].find("/") != -1:
             path = sys.argv[argv_index]
     print(path)
-    for filename in glob.glob("../testData/non-homogeneous-test-6.txt"):
+    for filename in glob.glob("../testData/comass33.txt"):
         print("File: " + filename)
         next_symbolic_var_index = 0  # Reset this index for every file
         debug_print("Beginning for file \"{0}\"".format(filename))
