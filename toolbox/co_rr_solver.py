@@ -537,14 +537,10 @@ def find_particular_solution(associated, f_n_list, roots):
         # F(n) is not a polynomial, try an exponential solution:
         A = symbols('A')
         particular_symbols = [A]
-        # Find the base of the exponential
-        print('pre Base')
-        base = re.search(r'\D(.*)\*\*', f_n_list).group()
-        print('Regexx Base: ', base)
-        base = re.search(r'\d*\*\*', f_n_list).group()
-        print('Regexx Base2: ', base)
-        base = base[0: (len(base) - 2)]
-        print('Base whitout **: ', base)
+        print(f_n_list)
+        base = re.search(r'\d*\*\*\(n', f_n_list).group()
+        print(base)
+        base = re.search(r'\d*', base).group()
         base = parse_expr(base)
         particular_attempt = A * base ** n
         if base in roots:
