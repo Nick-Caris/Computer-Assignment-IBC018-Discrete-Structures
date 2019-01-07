@@ -539,10 +539,10 @@ def find_particular_solution(associated, f_n_list, roots):
         particular_symbols = [A]
         # Find the base of the exponential
         print('pre Base')
-        base = re.search(r'?<\D(.*)\*\*', f_n_list).group()
+        base = re.search(r'\D(.*)\*\*', f_n_list).group()
         print('Regexx Base: ', base)
-        base = base[1: len(base)]
-        print('Base without +:', base)
+        base = re.search(r'\d*\*\*', f_n_list).group()
+        print('Regexx Base2: ', base)
         base = base[0: (len(base) - 2)]
         print('Base whitout **: ', base)
         base = parse_expr(base)
