@@ -21,14 +21,15 @@ DESCRIPTION
 """
 
 import glob  # Library for filename pattern-matching
+
 import sympy as sy
 from sympy import *
-from sympy.parsing.sympy_parser import parse_expr
-from sympy.abc import r, n
+from sympy.abc import n
 from sympy.interactive.printing import init_printing
+from sympy.parsing.sympy_parser import parse_expr
 
 init_printing(use_unicode=False, wrap_line=False)
-from sympy.matrices import Matrix, eye, zeros, ones, diag, GramSchmidt
+from sympy.matrices import Matrix
 import sys  # For access to the given argument
 import os  # Gives access to current location of co_rr_solver
 import re
@@ -365,7 +366,6 @@ def analyze_recurrence_equation(equation):
         equation = equation.replace(c_n, "", 1)  # Remove the actual c_n from the equation (only once)
         associated[step_length] = c_n  # Add the recursive step length and factor to the dictionary
         pos_s = equation.find("s(n-")  # First position of recurrent part (because other "s(n-"-part is already removed)
-    # Sorry, but you will have to implement the treatment of F(n) yourself!
 
     print('Deze word nieuw associated: ', new_associated)
     return associated, f_n_list, f_as_whole, (dict((int(x), y) for x, y in new_associated))
@@ -452,7 +452,7 @@ def get_characteristic_equation(associated):
     for key in associated:
         # associated.get(key) will return something like '-2*1', split() removes the unwanted '*1'
         value = associated.get(key).split('*')[0]
-        characteristics += ((-1) * int(value) * r ** (
+        characteristics += ((-1) * parse_expr(value) * r ** (
                 degrees - key))  # the '-1' is used to determine the characteristic equation
 
     print("Characteristics equation: " + str(characteristics))
@@ -474,9 +474,9 @@ def find_general_solution(roots):
     return [fn, alpha_number]
 
 
-def solve_alpha(general_solution, init_conditions, roots_amount):
+def solve_alpha(general_solution, init_conditions, alpha_amount):
     matrix_length = len(init_conditions)  # vertical alignment
-    matrix_width = roots_amount  # horizontal alignment
+    matrix_width = alpha_amount  # horizontal alignment
     matrix_general_solution = []
     matrix_init_conditions = []
     matrix_solutions = []
@@ -498,6 +498,87 @@ def solve_alpha(general_solution, init_conditions, roots_amount):
     return matrix_solutions
 
 
+"""Converts a dictionary of the form associated as returned by analyze_recurrence_relation to a sympy expression"""
+
+
+def associated_to_exp(associated):
+    terms = {}
+    expression = 0
+    for key, value in associated.items():
+        terms[key] = symbols('s_n{0}'.format(key))
+        exp = parse_expr(re.sub("\*1", "*{0}".format(terms[key]), value))
+        expression = expression + exp
+
+    return expression, terms
+
+
+def find_particular_solution(associated, f_n_list, roots):
+    # Convert associated to an expression
+    associated_as_exp, associated_symbols = associated_to_exp(associated)
+    print("associated as exp:\t{0}".format(associated_as_exp))
+    # check if F(n) is a polynomial
+    f_n_expr = parse_expr(f_n_list)
+    particular_attempt = 0
+    particular_symbols = []
+    try:
+        poly = Poly(f_n_expr, n)
+        # F(n) is a polynomial
+        print(poly)
+        degree = poly.degree()
+        print(degree)
+        for power in range(degree, -1, -1):
+            symbol = symbols('p{0}'.format(power))
+            particular_symbols.append(symbol)
+            particular_attempt = particular_attempt + symbol * n ** power
+        # S = 1, so compensate if 1 is a root
+        if 1 in roots:
+            particular_attempt = n**roots[1] * particular_attempt
+    except sy.PolynomialError:
+        # F(n) is not a polynomial, try an exponential solution:
+        A = symbols('A')
+        particular_symbols = [A]
+        print(f_n_list)
+        base = re.search(r'\d*\*\*\(n', f_n_list).group()
+        print(base)
+        base = re.search(r'\d*', base).group()
+        base = parse_expr(base)
+        particular_attempt = A * base ** n
+        if base in roots:
+            particular_attempt = n**roots[base] * particular_attempt
+
+    particular_other_n = {}
+    for key in associated_symbols.keys():
+        particular_other_n[key] = particular_attempt.subs(n, n - key)
+    for key, value in associated_symbols.items():
+        associated_as_exp = associated_as_exp.subs(value, particular_other_n[key])
+    associated_as_exp = associated_as_exp + f_n_expr
+    print(associated_as_exp)
+    print(particular_attempt)
+    particular_solution = sy.solve(Eq(associated_as_exp, particular_attempt), particular_symbols, particular=True)
+    print(particular_solution)
+    if type(particular_solution) is list:  # Dirty fix
+        particular_attempt = particular_attempt.subs(particular_symbols[0], particular_solution[0])
+    else:
+        for key, value in particular_solution.items():
+            particular_attempt = particular_attempt.subs(key, value)
+    return particular_attempt
+
+
+def solve_alpha_non_homogeneous(combined_solution, init_conditions, alphas_amount):
+    alphas = []
+    for i in range(1, alphas_amount + 1):
+        alphas.append('alpha{0}'.format(i))
+    equations = []
+    for key, value in init_conditions.items():
+        equations.append(Eq(combined_solution.subs(n, key), parse_expr(value)))
+    print(equations)
+    solved_alphas = solve(equations, alphas)
+    print(solved_alphas)
+    for key, value in solved_alphas.items():
+        combined_solution = combined_solution.subs(key, value)
+    return combined_solution
+
+
 """Finds a closed formula for a nonhomogeneous equation, where the nonhomogeneous part consists
     of a linear combination of constants, "r*n^x" with r a real number and x a positive natural number,
     and "r*s^n" with r and s being real numbers.
@@ -505,8 +586,26 @@ def solve_alpha(general_solution, init_conditions, roots_amount):
 
 
 def solve_nonhomogeneous_equation(init_conditions, associated, f_n_list):
-    # You have to implement this yourself!
-    return result
+    # First we find a general solution to the associated homogeneous system:
+    characteristic_poly = get_characteristic_equation(associated)
+    print("characteristic polynomial: \n{0}".format(characteristic_poly))
+    characteristic_roots = roots(characteristic_poly)
+    print("the roots are: \n{0}".format(characteristic_roots))
+    homogeneous_solution, alpha_amount = find_general_solution(characteristic_roots)
+    print("The general solution is: \n{0}".format(homogeneous_solution))
+
+    # Then we find a particular solution:
+    particular_solution = find_particular_solution(associated, f_n_list, characteristic_roots)
+    print("The particular solution is: \n{0}".format(particular_solution))
+
+    # Add up the general and particular solutions:
+    combined_solution = particular_solution + sum(homogeneous_solution)
+    print("The combined solution is: \n{0}".format(combined_solution))
+
+    # Fill in the initial conditions to find the closed formula
+    solution = solve_alpha_non_homogeneous(combined_solution, init_conditions, alpha_amount)
+    print("The total solution is: \n{0}".format(solution))
+    return solution
 
 
 """Transforms the string equation, that is of the right side of the form "s(n) = ...",
