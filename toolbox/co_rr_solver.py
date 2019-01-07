@@ -535,21 +535,18 @@ def find_particular_solution(associated, f_n_list, roots):
             particular_attempt = n**roots[1] * particular_attempt
     except sy.PolynomialError:
         # F(n) is not a polynomial, try an exponential solution:
-        A, B = symbols('A B')
+        A = symbols('A')
         particular_symbols = [A]
         # Find the base of the exponential
         print('pre Base')
-        base = re.search(r'\D(.*)\*\*', f_n_list).group()
+        base = re.search(r'?<\D(.*)\*\*', f_n_list).group()
         print('Regexx Base: ', base)
         base = base[1: len(base)]
         print('Base without +:', base)
         base = base[0: (len(base) - 2)]
         print('Base whitout **: ', base)
-
-        # base = re.search(r'\d\*\*\(n', f_n_list).group()
-        # base = re.search(r'\d', base).group()
         base = parse_expr(base)
-        particular_attempt = A * 41 ** n
+        particular_attempt = A * base ** n
         if base in roots:
             particular_attempt = n**roots[base] * particular_attempt
 
@@ -675,7 +672,7 @@ else:
         if sys.argv[argv_index].find("/") != -1:
             path = sys.argv[argv_index]
     print(path)
-    for filename in glob.glob("../testData/non-homogeneous-test.txt"):
+    for filename in glob.glob("../testData/non-homogeneous-test-6.txt"):
         print("File: " + filename)
         next_symbolic_var_index = 0  # Reset this index for every file
         debug_print("Beginning for file \"{0}\"".format(filename))
